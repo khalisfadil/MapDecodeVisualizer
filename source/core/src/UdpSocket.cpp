@@ -1,10 +1,6 @@
 #include "UdpSocket.hpp"
-
 /**
  * @brief Constructor to initialize the UDP socket.
- * 
- * Initializes the socket, binds it to the specified host and port, 
- * and sets up the callback function.
  */
 UDPSocket::UDPSocket(boost::asio::io_context& context, 
                      const std::string& host, 
@@ -14,14 +10,18 @@ UDPSocket::UDPSocket(boost::asio::io_context& context,
     : socket_(context, boost::asio::ip::udp::endpoint(boost::asio::ip::address::from_string(host), port)),
       callback_(callback) {
       buffer_.resize(bufferSize);
-      
     startReceive();
 }
+
+/**
+ * @brief Destructor to ensure socket cleanup.
+ */
+UDPSocket::~UDPSocket() {
+    stop();
+}
+
 /**
  * @brief Starts the asynchronous receive operation.
- * 
- * Continuously listens for incoming UDP packets and processes them 
- * using the user-defined callback function.
  */
 void UDPSocket::startReceive() {
     socket_.async_receive_from(
@@ -29,25 +29,35 @@ void UDPSocket::startReceive() {
         senderEndpoint_,
         [this](boost::system::error_code ec, std::size_t bytesReceived) {
             if (!ec && bytesReceived > 0) {
-                // Create a temporary buffer with the exact size of the received packet
                 std::vector<uint8_t> packetData(buffer_.begin(), buffer_.begin() + bytesReceived);
 
-                // Invoke the user-defined callback with the received data
-                callback_(packetData);
+                #ifdef DEBUG
+                std::cout << "Received packet (size: " << bytesReceived << "): ";
+                for (size_t i = 0; i < bytesReceived; ++i) {
+                    std::cout << std::hex << std::setw(2) << std::setfill('0') 
+                              << static_cast<int>(packetData[i]) << " ";
+                }
+                std::cout << std::dec << std::endl;
+                #endif
+
+                if (callback_) {
+                    callback_(packetData);
+                }
+            } else if (ec) {
+                std::cerr << "Receive error: " << ec.message() << std::endl;
             }
-            // Continue receiving data
+
             startReceive();
         }
     );
 }
+
 /**
  * @brief Stops the UDP socket.
- * 
- * Closes the socket and cancels any ongoing asynchronous operations.
  */
 void UDPSocket::stop() {
     boost::system::error_code ec;
-    socket_.close(ec); // Close the socket
+    socket_.close(ec);
     if (ec) {
         std::cerr << "Error closing socket: " << ec.message() << std::endl;
     }

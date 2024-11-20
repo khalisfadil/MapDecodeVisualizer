@@ -5,6 +5,7 @@
 #include <vector>
 #include <functional>
 #include <boost/asio.hpp>
+#include <iomanip>
 
 /**
  * @class UDPSocket
