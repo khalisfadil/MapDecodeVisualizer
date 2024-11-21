@@ -1,0 +1,30 @@
+cmake_minimum_required(VERSION 3.10)
+project(vizDynamicMap)
+
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+# Build configuration
+set(CMAKE_BUILD_TYPE Release)
+set(CMAKE_CXX_FLAGS_DEBUG "-g")
+set(CMAKE_CXX_FLAGS_RELEASE "-O3")
+
+# Core library
+add_library(core STATIC
+    source/core/src/CallbackStaticVoxel.cpp
+    source/core/src/UdpSocket.cpp
+)
+
+# Core library include paths
+target_include_directories(core PUBLIC source/core/include)
+
+# Link Boost to the core library
+find_package(Boost REQUIRED COMPONENTS system)
+find_package(Eigen3 REQUIRED)  # Example: Add Eigen if needed
+target_link_libraries(core PUBLIC Boost::system pthread Eigen3::Eigen)
+
+# Application executable
+add_executable(vizDynamicMap source/run/vizDynamicMap.cpp)
+target_include_directories(vizDynamicMap PRIVATE source/core/include)
+target_link_libraries(vizDynamicMap PRIVATE core)
+
