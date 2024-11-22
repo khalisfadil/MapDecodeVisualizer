@@ -57,7 +57,7 @@ int main() {
             std::lock_guard<std::mutex> lock(staticVoxelMutex);
             CallbackStaticVoxel_.process(data, staticVoxel_);
         };
-        threads.emplace_back(startListener, std::ref(ioContextStaticVoxel), "139.30.200.74", 49152, udpCallbackStaticVoxel, 2048);
+        threads.emplace_back(startListener, std::ref(ioContextStaticVoxel), "139.30.200.74", 49152, udpCallbackStaticVoxel, 1447);
 
         // ###################################################################
         // Dynamic Voxel Listener
@@ -66,7 +66,7 @@ int main() {
             std::lock_guard<std::mutex> lock(dynamicVoxelMutex);
             CallbackDynamicVoxel_.process(data, dynamicVoxel_);
         };
-        threads.emplace_back(startListener, std::ref(ioContextDynamicVoxel), "139.30.200.74", 49153, udpCallbackDynamicVoxel, 2048);
+        threads.emplace_back(startListener, std::ref(ioContextDynamicVoxel), "139.30.200.74", 49153, udpCallbackDynamicVoxel, 1447);
 
         // ###################################################################
         // Static Voxel Color Listener
@@ -75,7 +75,7 @@ int main() {
             std::lock_guard<std::mutex> lock(staticVoxelColorMutex);
             CallbackStaticVoxelColor_.process(data, staticVoxelColor_);
         };
-        threads.emplace_back(startListener, std::ref(ioContextStaticVoxelColor), "139.30.200.74", 49154, udpCallbackStaticVoxelColor, 2048);
+        threads.emplace_back(startListener, std::ref(ioContextStaticVoxelColor), "139.30.200.74", 49154, udpCallbackStaticVoxelColor, 1447);
 
         // ###################################################################
         // Dynamic Voxel Color Listener
@@ -84,7 +84,7 @@ int main() {
             std::lock_guard<std::mutex> lock(dynamicVoxelColorMutex);
             CallbackDynamicVoxelColor_.process(data, dynamicVoxelColor_);
         };
-        threads.emplace_back(startListener, std::ref(ioContextDynamicVoxelColor),"139.30.200.74", 49155, udpCallbackDynamicVoxelColor, 2048);
+        threads.emplace_back(startListener, std::ref(ioContextDynamicVoxelColor),"139.30.200.74", 49155, udpCallbackDynamicVoxelColor, 1447);
 
         // ###################################################################
         // Wait for all threads to finish
