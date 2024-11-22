@@ -5,7 +5,7 @@
  * Initializes the receivedXYZ_ buffer with NaN values to mark unused slots.
  */
 CallbackDynamicVoxel::CallbackDynamicVoxel()
-    : receivedXYZ_(MAX_NUM_POINT, Eigen::Vector3f::Constant(std::numeric_limits<float>::quiet_NaN())) 
+    : receivedXYZ_(MAX_NUM_POINT_DYNAMIC, Eigen::Vector3f::Constant(std::numeric_limits<float>::quiet_NaN())) 
 {}
 
 /**

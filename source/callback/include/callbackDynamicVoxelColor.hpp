@@ -10,7 +10,7 @@
 #include <cstring>
 #include <Eigen/Dense>
 
-constexpr int MAX_NUM_POINT = 128*1024;
+#include "constants.hpp"
 
 /**
  * @class CallbackStaticVoxel

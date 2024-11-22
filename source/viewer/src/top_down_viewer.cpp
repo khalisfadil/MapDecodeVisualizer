@@ -25,7 +25,8 @@ std::shared_ptr<open3d::geometry::TriangleMesh> TopDownViewer::CreateVoxelSquare
     // Function for merging two maps
     auto merge_maps = [](tsl::robin_map<int64_t, VoxelInfo>& a, const tsl::robin_map<int64_t, VoxelInfo>& b) {
         for (const auto& [key, voxel_info] : b) {
-            if (a.find(key) == a.end() || voxel_info.grayscale > a[key].grayscale) {
+            auto it = a.find(key);
+            if (it == a.end() || voxel_info.grayscale > it->second.grayscale) {
                 a[key] = voxel_info;
             }
         }
@@ -34,27 +35,35 @@ std::shared_ptr<open3d::geometry::TriangleMesh> TopDownViewer::CreateVoxelSquare
     // Perform parallel_reduce to compute the brightest voxel per unique XY key
     tsl::robin_map<int64_t, VoxelInfo> brightest_voxels = tbb::parallel_reduce(
         tbb::blocked_range<uint64_t>(0, points.size()),
-        tsl::robin_map<int64_t, VoxelInfo>(), // Identity value (local map)
-        [&](const tbb::blocked_range<uint64_t>& range, tsl::robin_map<int64_t, VoxelInfo> local_map) {
+        tsl::robin_map<int64_t, VoxelInfo>(), // Initial empty map
+        [&](const tbb::blocked_range<uint64_t>& range, tsl::robin_map<int64_t, VoxelInfo> local_map) -> tsl::robin_map<int64_t, VoxelInfo> {
             for (uint64_t i = range.begin(); i < range.end(); ++i) {
                 // Translate point to vehicle-relative coordinates
                 Eigen::Vector3f translated_point = points[i] - vehicle_position;
 
                 // Convert translated point to grid index
                 Eigen::Vector3f scaledPos = translated_point * (1.0f / mapRes);
-                Eigen::Vector3i gridIndex(std::floor(scaledPos.x()), std::floor(scaledPos.y()), std::floor(scaledPos.z()));
+                Eigen::Vector3i gridIndex(
+                    static_cast<int>(std::floor(scaledPos.x())),
+                    static_cast<int>(std::floor(scaledPos.y())),
+                    static_cast<int>(std::floor(scaledPos.z()))
+                );
 
                 // Generate a unique key for the XY grid index
                 int64_t key = generateKey(gridIndex.x(), gridIndex.y());
 
                 // Update the local map
-                if (local_map.find(key) == local_map.end() || grayscale_values[i](0,0) > local_map[key].grayscale) {
-                    local_map[key] = {gridIndex, grayscale_values[i](0,0)};
+                auto it = local_map.find(key);
+                if (it == local_map.end() || grayscale_values[i](0, 0) > it->second.grayscale) {
+                    local_map[key] = VoxelInfo{gridIndex, grayscale_values[i](0, 0)};
                 }
             }
             return local_map;
         },
-        merge_maps // Function to combine two maps
+        [&](tsl::robin_map<int64_t, VoxelInfo> left, const tsl::robin_map<int64_t, VoxelInfo>& right) {
+            merge_maps(left, right);
+            return left;
+        }
     );
 
     // Create a triangle mesh for the selected voxels

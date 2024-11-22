@@ -10,17 +10,28 @@
 #include <vector>
 #include <mutex>
 
+std::mutex consoleMutex;
+
 // Function to start a UDP listener in a separate thread
 void startListener(boost::asio::io_context& ioContext, const std::string& host, uint16_t port,
                    const std::function<void(const std::vector<uint8_t>&)>& callback, uint32_t bufferSize) {
     // Initialize the UDP socket
     UDPSocket listener(ioContext, host, port, callback, bufferSize);
 
+    // Synchronize printing to the console
+    {
+        std::lock_guard<std::mutex> lock(consoleMutex);
+        std::cout << "Started listened on " << host << ":" << port << std::endl;
+    }
+
     // Run the io_context in the current thread
     ioContext.run();
 }
 
+
 int main() {
+
+    std::cout << "Listening to incoming UDP packets......" << std::endl;
     bool success = false;
 
     // Shared resources with mutex protection
@@ -92,6 +103,13 @@ int main() {
     // Continue execution based on success or failure
     if (success) {
         std::cout << "All listeners started successfully. Continuing program execution..." << std::endl;
+
+        // Display the active UDP ports
+        std::cout << "Currently listening on the following UDP ports:" << std::endl;
+        std::cout << "1. 139.30.200.74:49152 - Static Voxel" << std::endl;
+        std::cout << "2. 139.30.200.74:49153 - Dynamic Voxel" << std::endl;
+        std::cout << "3. 139.30.200.74:49154 - Static Voxel Color" << std::endl;
+        std::cout << "4. 139.30.200.74:49155 - Dynamic Voxel Color" << std::endl;
 
         // Create an instance of TopDownViewer
         TopDownViewer Viewer;
