@@ -3,34 +3,39 @@
 // #####################################################
 
 std::shared_ptr<open3d::geometry::TriangleMesh> TopDownViewer::CreateVoxelSquares(const std::vector<Eigen::Vector3f>& points,
-                                                                                    const Eigen::Vector3f& vehicle_position,
-                                                                                    const std::vector<float>& grayscale_values,
-                                                                                    float mapRes)
+                                                                                  const Eigen::Vector3f& vehicle_position,
+                                                                                  const std::vector<Eigen::Matrix<uint32_t, 3, 1>>& grayscale_values,
+                                                                                  float mapRes)
 {
     if (points.size() != grayscale_values.size()) {
         throw std::invalid_argument("Points and grayscale_values must have the same size.");
     }
 
-    // Data structure to hold the brightest voxel for each Z level
+    // Data structure to hold the brightest voxel for each unique XY key
     struct VoxelInfo {
         Eigen::Vector3i gridIndex; // Voxel grid index
-        float grayscale;           // Grayscale value
+        uint32_t grayscale;           // Grayscale value
+    };
+
+    // Function to generate a unique key for XY indices
+    auto generateKey = [](int x, int y) -> int64_t {
+        return (static_cast<int64_t>(x) << 32) | (static_cast<uint32_t>(y));
     };
 
     // Function for merging two maps
-    auto merge_maps = [](tsl::robin_map<int, VoxelInfo>& a, const tsl::robin_map<int, VoxelInfo>& b) {
-        for (const auto& [z_key, voxel_info] : b) {
-            if (a.find(z_key) == a.end() || voxel_info.grayscale > a[z_key].grayscale) {
-                a[z_key] = voxel_info;
+    auto merge_maps = [](tsl::robin_map<int64_t, VoxelInfo>& a, const tsl::robin_map<int64_t, VoxelInfo>& b) {
+        for (const auto& [key, voxel_info] : b) {
+            if (a.find(key) == a.end() || voxel_info.grayscale > a[key].grayscale) {
+                a[key] = voxel_info;
             }
         }
     };
 
-    // Perform parallel_reduce to compute the brightest voxel per Z level
-    tsl::robin_map<int, VoxelInfo> brightest_voxels = tbb::parallel_reduce(
+    // Perform parallel_reduce to compute the brightest voxel per unique XY key
+    tsl::robin_map<int64_t, VoxelInfo> brightest_voxels = tbb::parallel_reduce(
         tbb::blocked_range<uint64_t>(0, points.size()),
-        tsl::robin_map<int, VoxelInfo>(), // Identity value (local map)
-        [&](const tbb::blocked_range<uint64_t>& range, tsl::robin_map<int, VoxelInfo> local_map) {
+        tsl::robin_map<int64_t, VoxelInfo>(), // Identity value (local map)
+        [&](const tbb::blocked_range<uint64_t>& range, tsl::robin_map<int64_t, VoxelInfo> local_map) {
             for (uint64_t i = range.begin(); i < range.end(); ++i) {
                 // Translate point to vehicle-relative coordinates
                 Eigen::Vector3f translated_point = points[i] - vehicle_position;
@@ -39,11 +44,12 @@ std::shared_ptr<open3d::geometry::TriangleMesh> TopDownViewer::CreateVoxelSquare
                 Eigen::Vector3f scaledPos = translated_point * (1.0f / mapRes);
                 Eigen::Vector3i gridIndex(std::floor(scaledPos.x()), std::floor(scaledPos.y()), std::floor(scaledPos.z()));
 
-                int z_key = gridIndex.z(); // Use Z grid index as the key
+                // Generate a unique key for the XY grid index
+                int64_t key = generateKey(gridIndex.x(), gridIndex.y());
 
                 // Update the local map
-                if (local_map.find(z_key) == local_map.end() || grayscale_values[i] > local_map[z_key].grayscale) {
-                    local_map[z_key] = {gridIndex, grayscale_values[i]};
+                if (local_map.find(key) == local_map.end() || grayscale_values[i](0,0) > local_map[key].grayscale) {
+                    local_map[key] = {gridIndex, grayscale_values[i](0,0)};
                 }
             }
             return local_map;
@@ -53,7 +59,10 @@ std::shared_ptr<open3d::geometry::TriangleMesh> TopDownViewer::CreateVoxelSquare
 
     // Create a triangle mesh for the selected voxels
     auto voxel_mesh = std::make_shared<open3d::geometry::TriangleMesh>();
-    for (const auto& [z_key, voxel_info] : brightest_voxels) {
+    voxel_mesh->vertices_.reserve(brightest_voxels.size() * 4);
+    voxel_mesh->triangles_.reserve(brightest_voxels.size() * 2);
+
+    for (const auto& [key, voxel_info] : brightest_voxels) {
         // Convert grid index back to position
         Eigen::Vector3f voxelPos = voxel_info.gridIndex.cast<float>() * mapRes;
 
@@ -81,14 +90,15 @@ std::shared_ptr<open3d::geometry::TriangleMesh> TopDownViewer::CreateVoxelSquare
 
     return voxel_mesh;
 }
+
 // #####################################################
 
-std::shared_ptr<open3d::geometry::TriangleMesh> TopDownViewer::CreateVehicleMesh(float size, float yaw_rad){
+std::shared_ptr<open3d::geometry::TriangleMesh> TopDownViewer::CreateVehicleMesh(float markersize , double yaw_rad){
 
     // Define vertices of the triangle (relative to the vehicle's local frame)
-    Eigen::Vector3d front_vertex(0.0, size / 2.0, 0.0);  // Forward
-    Eigen::Vector3d rear_left_vertex(-size / 2.0, -size / 2.0, 0.0);  // Rear-left
-    Eigen::Vector3d rear_right_vertex(size / 2.0, -size / 2.0, 0.0);  // Rear-right
+    Eigen::Vector3d front_vertex(0.0, markersize / 2.0, 0.0);  // Forward
+    Eigen::Vector3d rear_left_vertex(-markersize / 2.0, -markersize / 2.0, 0.0);  // Rear-left
+    Eigen::Vector3d rear_right_vertex(markersize / 2.0, -markersize / 2.0, 0.0);  // Rear-right
 
     // Create rotation matrix for yaw
     Eigen::Matrix3d rotation_matrix;

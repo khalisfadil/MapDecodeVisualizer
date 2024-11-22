@@ -1,10 +1,10 @@
-#include "callbackStaticVoxel.hpp"
+#include "callbackDynamicVoxel.hpp"
 
 /**
- * @brief Constructs the CallbackStaticVoxel object.
+ * @brief Constructs the CallbackDynamicVoxel object.
  * Initializes the receivedXYZ_ buffer with NaN values to mark unused slots.
  */
-CallbackStaticVoxel::CallbackStaticVoxel()
+CallbackDynamicVoxel::CallbackDynamicVoxel()
     : receivedXYZ_(MAX_NUM_POINT, Eigen::Vector3f::Constant(std::numeric_limits<float>::quiet_NaN())) 
 {}
 
@@ -18,7 +18,7 @@ CallbackStaticVoxel::CallbackStaticVoxel()
  * and appends 3D points to the buffer. If a new frame is detected, it resets internal states
  * and finalizes the previous frame.
  */
-void CallbackStaticVoxel::process(const std::vector<uint8_t>& data, Voxel& voxel) {
+void CallbackDynamicVoxel::process(const std::vector<uint8_t>& data, Voxel& voxel) {
     // Check if the input data is valid
     if (data.empty()) return;
 

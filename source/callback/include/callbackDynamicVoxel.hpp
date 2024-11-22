@@ -10,7 +10,7 @@
 #include <cstring>
 #include <Eigen/Dense>
 
-constexpr int MAX_NUM_POINT = 128*1024*5;
+constexpr int MAX_NUM_POINT = 128*1024;
 
 /**
  * @class CallbackStaticVoxel
@@ -19,7 +19,7 @@ constexpr int MAX_NUM_POINT = 128*1024*5;
  * static voxel frames. It decodes binary data packets, extracts 3D points
  * and associated metadata, and stores the information in a structured format.
  */
-class CallbackStaticVoxel {
+class CallbackDynamicVoxel {
 public:
 
     /**
@@ -41,13 +41,13 @@ public:
             : val(), numVal(0), frameID(0), t(0.0),
             NED(Eigen::Vector3d::Zero()),
             RPY(Eigen::Vector3d::Zero()) {}
-    };  
+    };   
 
     /**
      * @brief Constructor for the CallbackStaticVoxel class.
      * Initializes internal states and allocates space for point cloud storage.
      */
-    CallbackStaticVoxel();
+    CallbackDynamicVoxel();
 
     /**
      * @brief Processes a binary data packet to extract voxel data.

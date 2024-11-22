@@ -16,8 +16,6 @@
 class TopDownViewer {
 public:
 
-private:
-
     /**
      * @brief Translate points to vehicle center and create top-down voxel squares.
      *
@@ -29,7 +27,7 @@ private:
      */
     std::shared_ptr<open3d::geometry::TriangleMesh> CreateVoxelSquares(const std::vector<Eigen::Vector3f>& points,
                                                                                     const Eigen::Vector3f& vehicle_position,
-                                                                                    const std::vector<float>& grayscale_values,
+                                                                                    const std::vector<Eigen::Matrix<uint32_t, 3, 1>>& grayscale_values,
                                                                                     float map_res);
 
     /**
@@ -39,6 +37,7 @@ private:
      * @param yaw The yaw angle of the vehicle in degrees.
      * @return A shared pointer to the Open3D TriangleMesh representing the vehicle.
      */
-    std::shared_ptr<open3d::geometry::TriangleMesh> CreateVehicleMesh(float size, float yaw_rad);
+    std::shared_ptr<open3d::geometry::TriangleMesh> CreateVehicleMesh(float markersize, double yaw_rad);
+
 
 };

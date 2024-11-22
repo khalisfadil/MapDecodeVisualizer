@@ -1,10 +1,10 @@
-#include "callbackStaticVoxel.hpp"
+#include "callbackDynamicVoxelColor.hpp"
 
 /**
- * @brief Constructs the CallbackStaticVoxel object.
+ * @brief Constructs the callbackDynamicVoxelColor object.
  * Initializes the receivedXYZ_ buffer with NaN values to mark unused slots.
  */
-CallbackStaticVoxel::CallbackStaticVoxel()
+CallbackDynamicVoxelColor::CallbackDynamicVoxelColor()
     : receivedXYZ_(MAX_NUM_POINT, Eigen::Vector3f::Constant(std::numeric_limits<float>::quiet_NaN())) 
 {}
 
@@ -18,7 +18,7 @@ CallbackStaticVoxel::CallbackStaticVoxel()
  * and appends 3D points to the buffer. If a new frame is detected, it resets internal states
  * and finalizes the previous frame.
  */
-void CallbackStaticVoxel::process(const std::vector<uint8_t>& data, Voxel& voxel) {
+void CallbackDynamicVoxelColor::process(const std::vector<uint8_t>& data, Voxel& voxel) {
     // Check if the input data is valid
     if (data.empty()) return;
 
@@ -75,9 +75,9 @@ void CallbackStaticVoxel::process(const std::vector<uint8_t>& data, Voxel& voxel
             numReceivedSegm_++;
             uint32_t temp_offset = temp_segm * 115;
 
-            Eigen::Vector3f temp_receivedXYZ;
+            Eigen::Matrix<uint32_t, 3, 1> temp_receivedXYZ;
             for (uint32_t i = 0; i < temp_segmNumXYZ; ++i) {
-                float point[3];
+                uint32_t point[3];
                 std::memcpy(point, &data[67 + (i * 12)], sizeof(point));
                 temp_receivedXYZ << point[0], point[1], point[2];
                 receivedXYZ_[i + temp_offset] = temp_receivedXYZ;

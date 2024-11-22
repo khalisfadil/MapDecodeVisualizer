@@ -10,7 +10,7 @@
 #include <cstring>
 #include <Eigen/Dense>
 
-constexpr int MAX_NUM_POINT = 128*1024*5;
+constexpr int MAX_NUM_POINT = 128*1024;
 
 /**
  * @class CallbackStaticVoxel
@@ -19,7 +19,7 @@ constexpr int MAX_NUM_POINT = 128*1024*5;
  * static voxel frames. It decodes binary data packets, extracts 3D points
  * and associated metadata, and stores the information in a structured format.
  */
-class CallbackStaticVoxel {
+class CallbackDynamicVoxelColor {
 public:
 
     /**
@@ -29,13 +29,13 @@ public:
      * Contains 3D points, frame metadata, and associated positional/orientation data.
      */
     struct Voxel {
-        std::vector<Eigen::Vector3f> val; ///< 3D points in the voxel.
+        std::vector<Eigen::Matrix<uint32_t, 3, 1>> val; ///< 3D points in the voxel.
         uint32_t numVal = 0; ///< Number of valid 3D points.
         uint32_t frameID = 0; ///< Frame ID for identifying the data.
         double t = 0; ///< Timestamp of the frame.
         Eigen::Vector3d NED; ///< North-East-Down position of the frame.
         Eigen::Vector3d RPY; ///< Roll-Pitch-Yaw orientation of the frame.
-
+        
         // Custom constructor
         Voxel()
             : val(), numVal(0), frameID(0), t(0.0),
@@ -47,7 +47,7 @@ public:
      * @brief Constructor for the CallbackStaticVoxel class.
      * Initializes internal states and allocates space for point cloud storage.
      */
-    CallbackStaticVoxel();
+    CallbackDynamicVoxelColor();
 
     /**
      * @brief Processes a binary data packet to extract voxel data.
@@ -60,7 +60,7 @@ public:
 private:
 
     double t_; ///< Current timestamp of the frame being processed.
-    std::vector<Eigen::Vector3f> receivedXYZ_; ///< Buffer for received 3D points.
+    std::vector<Eigen::Matrix<uint32_t, 3, 1>> receivedXYZ_; ///< Buffer for received 3D points.
     uint32_t receivedNumXYZ_; ///< Total number of received 3D points in the current frame.
     uint8_t maxNumSegment_; ///< Maximum number of segments in the current frame.
     uint8_t numReceivedSegm_; ///< Number of segments received so far in the current frame.
