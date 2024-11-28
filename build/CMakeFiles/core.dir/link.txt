@@ -1,2 +1,0 @@
-/usr/bin/ar qc libcore.a CMakeFiles/core.dir/source/callback/src/callbackStaticVoxel.cpp.o CMakeFiles/core.dir/source/callback/src/callbackDynamicVoxel.cpp.o CMakeFiles/core.dir/source/callback/src/callbackDynamicVoxelColor.cpp.o CMakeFiles/core.dir/source/callback/src/callbackStaticVoxelColor.cpp.o CMakeFiles/core.dir/source/callback/src/udpSocket.cpp.o CMakeFiles/core.dir/source/viewer/src/top_down_viewer.cpp.o
-/usr/bin/ranlib libcore.a
