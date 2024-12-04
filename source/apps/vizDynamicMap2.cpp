@@ -17,25 +17,6 @@ std::mutex consoleMutex;
 static std::unique_ptr<OccupancyMap> occupancyMapInstance = nullptr;
 static std::unique_ptr<ClusterExtractor> clusterExtractorInstance = nullptr;
 
-struct MapConfig {
-    float resolution = 1.0f;
-    float reachingDistance = 300.0f;
-    Eigen::Vector3f center = Eigen::Vector3f(0.0f, 0.0f, 0.0f);
-};
-
-struct ClusterConfig {
-    float tolerance = 0.1f;
-    int minSize = 10;
-    int maxSize = 5000;
-    float staticThreshold = 0.1f;
-    float dynamicScoreThreshold = 0.5f;
-    float densityThreshold = 0.1f;
-    float velocityThreshold = 0.1f;
-    float similarityThreshold = 0.4f;
-    float maxDistanceThreshold = 10.0f;
-    float dt = 0.1f;
-};
-
 // Logging utility
 void logMessage(const std::string& message) {
     std::scoped_lock lock(consoleMutex);

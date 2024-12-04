@@ -67,27 +67,9 @@ target_link_libraries(core
 )
 
 # Define the main application executables
-add_executable(vizDynamicMap source/apps/vizDynamicMap.cpp)
-add_executable(vizDynamicMap2 source/apps/vizDynamicMap2.cpp)
 add_executable(vizPoints source/apps/vizPoints.cpp)
 
 # Include directories for the applications
-target_include_directories(vizDynamicMap PRIVATE
-    ${CMAKE_SOURCE_DIR}/source/3rdparty/robin-map/include/tsl
-    ${CMAKE_SOURCE_DIR}/source/3rdparty/dynamic-map/source/core/include
-    ${CMAKE_SOURCE_DIR}/source/callback/include
-    ${CMAKE_SOURCE_DIR}/source/viewer/include
-    ${PCL_INCLUDE_DIRS} # PCL include directories
-)
-
-target_include_directories(vizDynamicMap2 PRIVATE
-    ${CMAKE_SOURCE_DIR}/source/3rdparty/robin-map/include/tsl
-    ${CMAKE_SOURCE_DIR}/source/3rdparty/dynamic-map/source/core/include
-    ${CMAKE_SOURCE_DIR}/source/callback/include
-    ${CMAKE_SOURCE_DIR}/source/viewer/include
-    ${PCL_INCLUDE_DIRS} # PCL include directories
-)
-
 target_include_directories(vizPoints PRIVATE
     ${CMAKE_SOURCE_DIR}/source/3rdparty/robin-map/include/tsl
     ${CMAKE_SOURCE_DIR}/source/3rdparty/dynamic-map/source/core/include
@@ -97,8 +79,6 @@ target_include_directories(vizPoints PRIVATE
 )
 
 # Link the application executables to the core library
-target_link_libraries(vizDynamicMap PRIVATE core)
-target_link_libraries(vizDynamicMap2 PRIVATE core)
 target_link_libraries(vizPoints PRIVATE core)
 
 # Debugging: Output configuration details for confirmation

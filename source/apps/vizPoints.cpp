@@ -39,9 +39,12 @@ void signalHandler(int signal) {
     if (signal == SIGINT || signal == SIGTERM) {
         running = false;
         queueCV.notify_all();  // Wake up processing threads
-        
+
         const char* message = "Shutting down listeners and processors...\n";
-        write(STDOUT_FILENO, message, strlen(message));
+        ssize_t result = write(STDOUT_FILENO, message, strlen(message));
+        if (result < 0) {
+            // Optional: Log an error or take action (unlikely necessary in a signal handler)
+        }
     }
 }
 // ########################################################
