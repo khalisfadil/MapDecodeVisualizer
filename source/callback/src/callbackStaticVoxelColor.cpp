@@ -50,8 +50,7 @@ void CallbackStaticVoxelColor::process(const std::vector<uint8_t>& data, Voxel& 
         // Handle a new frame
         if (temp_frameID != frameID_) {
             // Finalize the previous frame if all segments are received
-            if (maxNumSegment_ == numReceivedSegm_ - 1) {
-                voxel.val.resize(receivedNumXYZ_);
+            if (maxNumSegment_ == numReceivedSegm_) {
                 std::copy(receivedXYZ_.begin(), receivedXYZ_.begin() + receivedNumXYZ_, voxel.val.begin());
                 voxel.numVal = receivedNumXYZ_;
                 voxel.frameID = frameID_;

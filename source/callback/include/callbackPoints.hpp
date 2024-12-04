@@ -13,7 +13,7 @@
 #include "constants.hpp"
 
 /**
- * @class CallbackStaticVoxel
+ * @class CallbackPoints
  * 
  * @brief A class for processing incoming point cloud data a
  *  It decodes binary data packets, extracts 3D points
@@ -23,12 +23,12 @@ class CallbackPoints {
 public:
 
     /**
-     * @struct staticVoxel
+     * @struct Points
      * 
-     * @brief Represents a container for static voxel data.
+     * @brief Represents a container for points data.
      * Contains 3D points, frame metadata, and associated positional/orientation data.
      */
-    struct Voxel {
+    struct Points {
         std::vector<Eigen::Vector3f> val; ///< 3D points in the voxel.
         uint32_t numVal = 0; ///< Number of valid 3D points.
         uint32_t frameID = 0; ///< Frame ID for identifying the data.
@@ -37,8 +37,9 @@ public:
         Eigen::Vector3d RPY; ///< Roll-Pitch-Yaw orientation of the frame.
 
         // Custom constructor
-        Voxel()
-            : val(), numVal(0), frameID(0), t(0.0),
+        Points()
+            : val(MAX_NUM_POINT, Eigen::Vector3f::Constant(std::numeric_limits<float>::quiet_NaN())), 
+            numVal(0), frameID(0), t(0.0),
             NED(Eigen::Vector3d::Zero()),
             RPY(Eigen::Vector3d::Zero()) {}
     };   
@@ -55,7 +56,7 @@ public:
      * @param data The binary data packet containing point cloud and metadata.
      * @param staticVoxel Reference to a staticVoxel object to store the processed data.
      */
-    void process(const std::vector<uint8_t>& data, Voxel& voxel);
+    void process(const std::vector<uint8_t>& data, Points& points);
 
 private:
 
@@ -63,7 +64,7 @@ private:
     std::vector<Eigen::Vector3f> receivedXYZ_; ///< Buffer for received 3D points.
     uint32_t receivedNumXYZ_; ///< Total number of received 3D points in the current frame.
     uint32_t maxNumSegment_; ///< Maximum number of segments in the current frame.
-    uint32_t numReceivedSegm_; ///< Number of segments received so far in the current frame.
+    uint32_t currSegmIdx_; ///< Number of segments received so far in the current frame.
     uint32_t frameID_; ///< Frame ID of the current frame being processed.
     Eigen::Vector3d NED_; ///< North-East-Down position of the current frame.
     Eigen::Vector3d RPY_; ///< Roll-Pitch-Yaw orientation of the current frame.

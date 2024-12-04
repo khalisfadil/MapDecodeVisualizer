@@ -18,7 +18,7 @@ CallbackPoints::CallbackPoints()
  * and appends 3D points to the buffer. If a new frame is detected, it resets internal states
  * and finalizes the previous frame.
  */
-void CallbackPoints::process(const std::vector<uint8_t>& data, Voxel& voxel) {
+void CallbackPoints::process(const std::vector<uint8_t>& data, Points& points) {
     // Check if the input data is valid
     if (data.empty()) return;
 
@@ -46,20 +46,19 @@ void CallbackPoints::process(const std::vector<uint8_t>& data, Voxel& voxel) {
         // Extract frame metadata
         uint32_t temp_frameID;
         std::memcpy(&temp_frameID, &data[65], sizeof(uint32_t)); // Bytes 65 to 68
-        uint32_t temp_segmNumXYZ;
-        std::memcpy(&temp_segmNumXYZ, &data[69], sizeof(uint32_t)); // Bytes 69 to 72
+        uint32_t temp_numXYZ;
+        std::memcpy(&temp_numXYZ, &data[69], sizeof(uint32_t)); // Bytes 69 to 72
 
         // Handle a new frame
         if (temp_frameID != frameID_) {
             // Finalize the previous frame if all segments are received
-            if (maxNumSegment_ == numReceivedSegm_ - 1) {
-                voxel.val.resize(receivedNumXYZ_);
-                std::copy(receivedXYZ_.begin(), receivedXYZ_.begin() + receivedNumXYZ_, voxel.val.begin());
-                voxel.numVal = receivedNumXYZ_;
-                voxel.frameID = frameID_;
-                voxel.t = t_;
-                voxel.NED = NED_;
-                voxel.RPY = RPY_;
+            if (maxNumSegment_ == currSegmIdx_) {
+                std::copy(receivedXYZ_.begin(), receivedXYZ_.begin() + receivedNumXYZ_, points.val.begin());
+                points.numVal = receivedNumXYZ_;
+                points.frameID = frameID_;
+                points.t = t_;
+                points.NED = NED_;
+                points.RPY = RPY_;
             }
 
             // Reset internal states for the new frame
@@ -69,23 +68,23 @@ void CallbackPoints::process(const std::vector<uint8_t>& data, Voxel& voxel) {
             frameID_ = temp_frameID;
             t_ = temp_t;
             maxNumSegment_ = temp_maxSegm;
-            numReceivedSegm_ = 0;
+            currSegmIdx_ = 0;
         }
 
         // Validate packet size and process 3D points
-        if (data.size() - 73 == temp_segmNumXYZ * 12) {
-            numReceivedSegm_++;
+        if (data.size() - 73 == temp_numXYZ * 12) {
+            currSegmIdx_++;
             uint32_t temp_offset = temp_segm * 110;
 
             Eigen::Vector3f temp_receivedXYZ;
-            for (uint32_t i = 0; i < temp_segmNumXYZ; ++i) {
+            for (uint32_t i = 0; i < temp_numXYZ; ++i) {
                 float point[3];
                 std::memcpy(point, &data[73 + (i * 12)], sizeof(point));
                 temp_receivedXYZ << point[0], point[1], point[2];
                 receivedXYZ_[i + temp_offset] = temp_receivedXYZ;
             }
 
-            receivedNumXYZ_ = temp_offset + temp_segmNumXYZ;
+            receivedNumXYZ_ = temp_offset + temp_numXYZ;
         }
     }
 }

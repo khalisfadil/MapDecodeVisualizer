@@ -38,7 +38,8 @@ public:
         
         // Custom constructor
         Voxel()
-            : val(), numVal(0), frameID(0), t(0.0),
+            : val(MAX_NUM_POINT_DYNAMIC, Eigen::Vector3f::Zero()), 
+            numVal(0), frameID(0), t(0.0),
             NED(Eigen::Vector3d::Zero()),
             RPY(Eigen::Vector3d::Zero()) {}
     };  
