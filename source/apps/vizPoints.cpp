@@ -233,9 +233,9 @@ int main() {
         std::vector<std::thread> threads;
 
         // Listener configurations
-        std::string pointsHost = "139.30.200.74";
+        std::string pointsHost = "127.0.0.1";
         uint16_t pointsPort = 61234;
-        std::string attributesHost = "139.30.200.74";
+        std::string attributesHost = "127.0.0.1";
         uint16_t attributesPort = 61235;
 
         // Start points Listener
