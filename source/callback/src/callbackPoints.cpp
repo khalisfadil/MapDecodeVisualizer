@@ -52,7 +52,7 @@ void CallbackPoints::process(const std::vector<uint8_t>& data, Points& points) {
         // Handle a new frame
         if (temp_frameID != frameID_) {
             // Finalize the previous frame if all segments are received
-            if (maxNumSegment_ == currSegmIdx_) {
+            if (maxNumSegment_ == currSegmIdx_-1) {
                 std::copy(receivedXYZ_.begin(), receivedXYZ_.begin() + receivedNumXYZ_, points.val.begin());
                 points.numVal = receivedNumXYZ_;
                 points.frameID = frameID_;
