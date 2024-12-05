@@ -206,11 +206,11 @@ void pointToWorkWith(CallbackPoints::Points& points, CallbackPoints::Points& att
                 occupancyMapInstance->runOccupancyMapPipeline(
                     pointCloud, intensity, reflectivity, NIR, dynamicCloud, points.NED.cast<float>(), points.frameID);
                 
-                auto dynamicVoxelVector = occupancyMapInstance->getDynamicVoxels();
+                auto staticVoxelVector = occupancyMapInstance->getStaticVoxels();
 
                 // Debugging output
                 std::cout << "Function running okay. Frame ID: " << points.frameID << "\n";
-                std::cout << "dynamicVoxelVector Size: " << dynamicVoxelVector.size() << "\n";
+                std::cout << "static Size: " << staticVoxelVector.size() << "\n";
             }
         }
 
@@ -220,6 +220,8 @@ void pointToWorkWith(CallbackPoints::Points& points, CallbackPoints::Points& att
 
         if (remainingSleepTime > std::chrono::milliseconds(0)) {
             std::this_thread::sleep_for(remainingSleepTime);
+            std::cout << "Processing Time: " 
+                      << std::chrono::duration_cast<std::chrono::milliseconds>(elapsedTime).count()<< "\n";;
         } else {
             std::lock_guard<std::mutex> lock(consoleMutex);
             std::cout << "Warning: Processing took longer than 100 ms. Time: " 
