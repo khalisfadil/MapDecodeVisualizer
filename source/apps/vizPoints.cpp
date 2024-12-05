@@ -188,7 +188,7 @@ void pointToWorkWith(CallbackPoints::Points& points, CallbackPoints::Points& att
                      const std::vector<int>& allowedCores) {
     setThreadAffinity(allowedCores);
 
-    const auto targetCycleDuration = std::chrono::milliseconds(500); // 10 Hz target
+    const auto targetCycleDuration = std::chrono::milliseconds(100); // 10 Hz target
 
     initializeSharedResources();  // Encapsulated lazy initialization
 
