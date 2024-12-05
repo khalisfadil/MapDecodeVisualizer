@@ -104,6 +104,23 @@ void startListener(boost::asio::io_context& ioContext, const std::string& host, 
     try {
         // Initialize the UDP socket
         UDPSocket listener(ioContext, host, port, [&](const std::vector<uint8_t>& data) {
+            {
+                std::lock_guard<std::mutex> lock(consoleMutex);
+                auto now = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
+                std::cout << "[" << std::put_time(std::localtime(&now), "%F %T")
+                          << "] Received packet of size: " << data.size() << " bytes on port: " << port << std::endl;
+
+                // Print first few bytes of the packet as a debug example
+                if (!data.empty()) {
+                    std::cout << "Data (hex): ";
+                    for (size_t i = 0; i < std::min<size_t>(data.size(), 16); ++i) {
+                        std::cout << std::hex << std::setw(2) << std::setfill('0') << (int)data[i] << " ";
+                    }
+                    std::cout << std::dec << std::endl;  // Reset formatting
+                }
+            }
+
+            // Process the packet
             std::lock_guard<std::mutex> lock(dataMutex);
             callbackProcessor.process(data, latestPoints);
         }, bufferSize);
