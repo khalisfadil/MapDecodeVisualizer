@@ -217,12 +217,12 @@ void pointToWorkWith(CallbackPoints::Points& points, CallbackPoints::Points& att
 
                 // Run clustering and occupancy map pipelines
                 clusterExtractorInstance->runClusterExtractorPipeline(pointCloud, intensity, reflectivity, NIR);
-                auto dynamicCloud = clusterExtractorInstance->getDynamicClusterPoints();
-                if (!dynamicCloud.empty()) {
-                    int firstClusterID = dynamicCloud[0].clusterID;
+                auto dynamicCluster = clusterExtractorInstance->getDynamicClusters();
+                if (!dynamicCluster.empty()) {
+                    int firstClusterID = dynamicCluster[0].clusterID;
                     std::cout << "First Cluster ID: " << firstClusterID << std::endl;
                 } else {
-                    std::cout << "dynamicCloud is empty." << std::endl;
+                    std::cout << "dynamicCluster is empty." << std::endl;
                 }
 
                 // occupancyMapInstance->runOccupancyMapPipeline(
