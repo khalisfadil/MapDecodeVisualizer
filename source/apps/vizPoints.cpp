@@ -27,7 +27,6 @@ std::condition_variable queueCV;  // Condition variable for signaling
 MapConfig mapConfig;
 ClusterConfig clusterConfig;
 
-
 // ########################################################
 // shared across all instances of the class
 static std::unique_ptr<OccupancyMap> occupancyMapInstance = nullptr;
