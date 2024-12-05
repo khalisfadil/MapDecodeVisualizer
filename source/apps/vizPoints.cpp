@@ -175,7 +175,9 @@ void pointToWorkWith(CallbackPoints::Points& points, CallbackPoints::Points& att
                      const std::vector<int>& allowedCores) {
     setThreadAffinity(allowedCores);
 
-    const auto targetCycleDuration = std::chrono::milliseconds(100); // 10 Hz target
+    const auto targetCycleDuration = std::chrono::milliseconds(500); // 10 Hz target
+
+    initializeSharedResources();  // Encapsulated lazy initialization
 
     while (running) {
         auto cycleStartTime = std::chrono::steady_clock::now();
@@ -266,8 +268,6 @@ int main() {
     // Synchronization primitives
     std::condition_variable dataReadyCV;
     std::atomic<bool> dataAvailable(false);
-
-    initializeSharedResources();  // Encapsulated lazy initialization
 
     try {
         std::vector<std::thread> threads;

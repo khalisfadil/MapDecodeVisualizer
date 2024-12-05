@@ -7,7 +7,7 @@ constexpr int MAX_NUM_POINT_DYNAMIC = 128 * 1024;    // Dynamic voxel max points
 constexpr int MAX_NUM_POINT = 128*1024;
 
 struct MapConfig {
-    float resolution = 1.0f;
+    float resolution = 5.0f;
     float reachingDistance = 300.0f;
     Eigen::Vector3f center = Eigen::Vector3f(0.0f, 0.0f, 0.0f);
 };
