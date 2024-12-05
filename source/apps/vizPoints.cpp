@@ -169,6 +169,20 @@ void startListener(boost::asio::io_context& ioContext, const std::string& host, 
     }
 }
 // ########################################################
+// Main initializeSharedResources
+void initializeSharedResources() {
+    if (!occupancyMapInstance) {
+        occupancyMapInstance = std::make_unique<OccupancyMap>(mapConfig.resolution, mapConfig.reachingDistance, mapConfig.center);
+    }
+    if (!clusterExtractorInstance) {
+        clusterExtractorInstance = std::make_unique<ClusterExtractor>(
+            clusterConfig.tolerance, clusterConfig.minSize, clusterConfig.maxSize,
+            clusterConfig.staticThreshold, clusterConfig.dynamicScoreThreshold,
+            clusterConfig.densityThreshold, clusterConfig.velocityThreshold,
+            clusterConfig.similarityThreshold, clusterConfig.maxDistanceThreshold, clusterConfig.dt);
+    }
+}
+// ########################################################
 // Processing function to consume data at a fixed rate (10 Hz)
 void pointToWorkWith(CallbackPoints::Points& points, CallbackPoints::Points& attributes,
                      const std::vector<int>& allowedCores) {
@@ -231,21 +245,6 @@ void pointToWorkWith(CallbackPoints::Points& points, CallbackPoints::Points& att
         }
     }
 }
-// ########################################################
-// Main initializeSharedResources
-void initializeSharedResources() {
-    if (!occupancyMapInstance) {
-        occupancyMapInstance = std::make_unique<OccupancyMap>(mapConfig.resolution, mapConfig.reachingDistance, mapConfig.center);
-    }
-    if (!clusterExtractorInstance) {
-        clusterExtractorInstance = std::make_unique<ClusterExtractor>(
-            clusterConfig.tolerance, clusterConfig.minSize, clusterConfig.maxSize,
-            clusterConfig.staticThreshold, clusterConfig.dynamicScoreThreshold,
-            clusterConfig.densityThreshold, clusterConfig.velocityThreshold,
-            clusterConfig.similarityThreshold, clusterConfig.maxDistanceThreshold, clusterConfig.dt);
-    }
-}
-
 // ########################################################
 // Main Function
 int main() {
