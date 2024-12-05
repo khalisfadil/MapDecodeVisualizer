@@ -92,7 +92,8 @@ void setThreadAffinity(const std::vector<int>& coreIDs) {
 void startListener(boost::asio::io_context& ioContext, const std::string& host, uint16_t port,
                    uint32_t bufferSize, const std::vector<int>& allowedCores,
                    CallbackPoints& callbackProcessor, CallbackPoints::Points& latestPoints,
-                   std::mutex& dataMutex) {
+                   std::mutex& dataMutex, std::condition_variable& dataReadyCV, 
+                   std::atomic<bool>& dataAvailable) {
     setThreadAffinity(allowedCores);
 
     if (host.empty() || port == 0) {
@@ -109,20 +110,23 @@ void startListener(boost::asio::io_context& ioContext, const std::string& host, 
                 auto now = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
                 std::cout << "[" << std::put_time(std::localtime(&now), "%F %T")
                           << "] Received packet of size: " << data.size() << " bytes on port: " << port << std::endl;
-
-                // Print first few bytes of the packet as a debug example
-                if (!data.empty()) {
-                    std::cout << "Data (hex): ";
-                    for (size_t i = 0; i < std::min<size_t>(data.size(), 16); ++i) {
-                        std::cout << std::hex << std::setw(2) << std::setfill('0') << (int)data[i] << " ";
-                    }
-                    std::cout << std::dec << std::endl;  // Reset formatting
-                }
             }
 
-            // Process the packet
-            std::lock_guard<std::mutex> lock(dataMutex);
-            callbackProcessor.process(data, latestPoints);
+            {   
+                // Process the packet
+                std::lock_guard<std::mutex> lock(dataMutex);
+                callbackProcessor.process(data, latestPoints);
+
+                {
+                    std::lock_guard<std::mutex> cvLock(consoleMutex); // Ensure thread-safety
+                    dataAvailable = true;
+                }
+                dataReadyCV.notify_one(); // Notify the processing thread
+
+                // Debug output for verification
+                std::cout << "Updated Frame ID: " << latestPoints.frameID 
+                          << ", Number of Points: " << latestPoints.numVal << std::endl;
+            }
         }, bufferSize);
 
         {
@@ -133,12 +137,21 @@ void startListener(boost::asio::io_context& ioContext, const std::string& host, 
         }
 
         // Run the io_context in the current thread
+        int errorCount = 0;
+        const int maxErrors = 10;
+
         while (running) {
             try {
                 ioContext.run();
             } catch (const std::exception& e) {
-                std::lock_guard<std::mutex> lock(consoleMutex);
-                std::cerr << "Listener encountered an error: " << e.what() << ". Restarting..." << std::endl;
+                errorCount++;
+                if (errorCount <= maxErrors) {
+                    std::lock_guard<std::mutex> lock(consoleMutex);
+                    std::cerr << "Listener encountered an error: " << e.what() << ". Restarting..." << std::endl;
+                }
+                if (errorCount == maxErrors) {
+                    std::cerr << "Error log limit reached. Suppressing further error logs.\n";
+                }
                 ioContext.restart();
             }
         }
