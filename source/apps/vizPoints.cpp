@@ -184,29 +184,33 @@ void pointToWorkWith(CallbackPoints::Points& points, CallbackPoints::Points& att
             std::scoped_lock lock(pointsMutex, attributesMutex, consoleMutex, occupancyMapMutex);
             // Process points and attributes
             if (points.frameID == attributes.frameID && points.numVal > 0) {
+                // Extract a subset of points from points.val
+                std::vector<Eigen::Vector3f> pointCloud(points.val.begin(), points.val.begin() + points.numVal);
 
-                // Parse attributes efficiently
-                std::vector<float> intensity(attributes.val.size());
-                std::vector<float> reflectivity(attributes.val.size());
-                std::vector<float> NIR(attributes.val.size());
+                // Pre-size attribute vectors
+                std::vector<float> intensity(attributes.numVal);
+                std::vector<float> reflectivity(attributes.numVal);
+                std::vector<float> NIR(attributes.numVal);
 
-                std::transform(attributes.val.begin(), attributes.val.end(), intensity.begin(),
-                            [](const auto& vec) { return vec.x(); });
-                std::transform(attributes.val.begin(), attributes.val.end(), reflectivity.begin(),
-                            [](const auto& vec) { return vec.y(); });
-                std::transform(attributes.val.begin(), attributes.val.end(), NIR.begin(),
-                            [](const auto& vec) { return vec.z(); });
+                // Parse attributes into separate vectors
+                std::transform(attributes.val.begin(), attributes.val.begin() + attributes.numVal, intensity.begin(),
+                            [](const Eigen::Vector3f& vec) { return vec.x(); });
+                std::transform(attributes.val.begin(), attributes.val.begin() + attributes.numVal, reflectivity.begin(),
+                            [](const Eigen::Vector3f& vec) { return vec.y(); });
+                std::transform(attributes.val.begin(), attributes.val.begin() + attributes.numVal, NIR.begin(),
+                            [](const Eigen::Vector3f& vec) { return vec.z(); });
 
-                clusterExtractorInstance->runClusterExtractorPipeline(points.val, intensity, reflectivity, NIR);
+                // Run clustering and occupancy map pipelines
+                clusterExtractorInstance->runClusterExtractorPipeline(pointCloud, intensity, reflectivity, NIR);
                 auto dynamicCloud = clusterExtractorInstance->getDynamicClusterPoints();
-                occupancyMapInstance->runOccupancyMapPipeline(points.val, intensity, reflectivity, NIR, dynamicCloud, points.NED.cast<float>(), points.frameID);
+                occupancyMapInstance->runOccupancyMapPipeline(
+                    pointCloud, intensity, reflectivity, NIR, dynamicCloud, points.NED.cast<float>(), points.frameID);
                 
                 auto dynamicVoxelVector = occupancyMapInstance->getDynamicVoxels();
 
-                std::cout << "Function running okay.\n";
-                std::cout << "dynamicVoxelVector. Size: " 
-                      << dynamicVoxelVector.size()
-                      << "\n";
+                // Debugging output
+                std::cout << "Function running okay. Frame ID: " << points.frameID << "\n";
+                std::cout << "dynamicVoxelVector Size: " << dynamicVoxelVector.size() << "\n";
             }
         }
 
