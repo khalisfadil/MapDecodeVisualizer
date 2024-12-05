@@ -218,14 +218,14 @@ void pointToWorkWith(CallbackPoints::Points& points, CallbackPoints::Points& att
                 // Run clustering and occupancy map pipelines
                 clusterExtractorInstance->runClusterExtractorPipeline(pointCloud, intensity, reflectivity, NIR);
                 auto dynamicCloud = clusterExtractorInstance->getDynamicClusterPoints();
-                occupancyMapInstance->runOccupancyMapPipeline(
-                    pointCloud, intensity, reflectivity, NIR, dynamicCloud, points.NED.cast<float>(), points.frameID);
+                // occupancyMapInstance->runOccupancyMapPipeline(
+                //     pointCloud, intensity, reflectivity, NIR, dynamicCloud, points.NED.cast<float>(), points.frameID);
                 
-                auto staticVoxelVector = occupancyMapInstance->getStaticVoxels();
+                // auto staticVoxelVector = occupancyMapInstance->getStaticVoxels();
 
                 // Debugging output
                 std::cout << "Function running okay. Frame ID: " << points.frameID << "\n";
-                std::cout << "static Size: " << staticVoxelVector.size() << "\n";
+                // std::cout << "static Size: " << staticVoxelVector.size() << "\n";
             }
         }
 
