@@ -257,6 +257,10 @@ int main() {
     CallbackPoints::Points points_, attributes_;
     CallbackPoints callbackPoints_, callbackAttributes_;
 
+    // Synchronization primitives
+    std::condition_variable dataReadyCV;
+    std::atomic<bool> dataAvailable(false);
+
     initializeSharedResources();  // Encapsulated lazy initialization
 
     try {
@@ -270,16 +274,40 @@ int main() {
 
         // Start points Listener
         boost::asio::io_context ioContextPoints;
-        threads.emplace_back(startListener, std::ref(ioContextPoints), pointsHost, pointsPort,
-                             1393, std::vector<int>{8}, std::ref(callbackPoints_), std::ref(points_), std::ref(pointsMutex));
+        threads.emplace_back(
+            startListener, 
+            std::ref(ioContextPoints),         // Pass io_context by reference
+            pointsHost,                        // Copy string (simple type)
+            pointsPort,                        // Copy port number (simple type)
+            1393,                              // Copy bufferSize (simple type)
+            std::vector<int>{8},               // Pass vector (temporary, can be moved)
+            std::ref(callbackPoints_),         // Pass callbackProcessor by reference
+            std::ref(points_),                 // Pass latestPoints by reference
+            std::ref(pointsMutex),             // Pass mutex by reference
+            std::ref(dataReadyCV),             // Pass condition_variable by reference
+            std::ref(dataAvailable)            // Pass atomic<bool> by reference
+        );
 
         // Start attributes Listener
         boost::asio::io_context ioContextAttributes;
-        threads.emplace_back(startListener, std::ref(ioContextAttributes), attributesHost, attributesPort,
-                             1393, std::vector<int>{9}, std::ref(callbackAttributes_), std::ref(attributes_), std::ref(attributesMutex));
+        threads.emplace_back(
+            startListener, 
+            std::ref(ioContextAttributes),     // Pass io_context by reference
+            attributesHost,                    // Copy string (simple type)
+            attributesPort,                    // Copy port number (simple type)
+            1393,                              // Copy bufferSize (simple type)
+            std::vector<int>{9},               // Pass vector (temporary, can be moved)
+            std::ref(callbackAttributes_),     // Pass callbackProcessor by reference
+            std::ref(attributes_),             // Pass latestPoints by reference
+            std::ref(attributesMutex),         // Pass mutex by reference
+            std::ref(dataReadyCV),             // Pass condition_variable by reference
+            std::ref(dataAvailable)            // Pass atomic<bool> by reference
+        );
 
         // Start Processing (10 Hz)
-        threads.emplace_back(pointToWorkWith, std::ref(points_), std::ref(attributes_), std::vector<int>{0, 1, 2, 3, 4, 5, 6, 7});
+        threads.emplace_back([&]() {
+            pointToWorkWith(std::ref(points_), std::ref(attributes_), std::vector<int>{0, 1, 2, 3, 4, 5, 6, 7});
+        });
 
         // Monitor signal and clean up
         while (running) {
@@ -305,4 +333,5 @@ int main() {
     std::cout << "All listeners stopped. Exiting program." << std::endl;
     return EXIT_SUCCESS;
 }
+
 
