@@ -1,0 +1,7 @@
+[submodule "source/3rdparty/robin-map"]
+	path = source/3rdparty/robin-map
+	url = https://github.com/Tessil/robin-map.git
+
+[submodule "source/3rdparty/dynamic-map"]
+	path = source/3rdparty/dynamic-map
+	url = https://github.com/khalisfadil/DynamicMapping.git
