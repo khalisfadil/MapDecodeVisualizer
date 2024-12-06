@@ -1,265 +1,74 @@
-#include "udpSocket.hpp"
-#include "callbackPoints.hpp"
-#include "occupancyMap.hpp"
-#include "clusterExtractor.hpp"
+// MIT License
 
-#include <boost/asio.hpp>
-#include <mutex>
-#include <thread>
-#include <iostream>
-#include <vector>
-#include <csignal>
-#include <atomic>
-#include <queue>
-#include <condition_variable>
-#include <chrono>
-#include <sched.h>
-#include <pthread.h>
+// Copyright (c) 2024 Muhammad Khalis bin Mohd Fadil
 
-// ########################################################
-// Global variables
-std::mutex consoleMutex;   // Synchronize console output
-std::atomic<bool> running(true);  // Atomic flag for program termination
-std::mutex pointsMutex;    // Mutex for protecting points data
-std::mutex attributesMutex;  // Mutex for protecting attributes data
-std::mutex occupancyMapMutex;
-std::condition_variable queueCV;  // Condition variable for signaling
-MapConfig mapConfig;
-ClusterConfig clusterConfig;
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
 
-// ########################################################
-// shared across all instances of the class
-static std::unique_ptr<OccupancyMap> occupancyMapInstance = nullptr;
-static std::unique_ptr<ClusterExtractor> clusterExtractorInstance = nullptr;
+// The above copyright notice and this permission notice shall be included in all
+// copies or substantial portions of the Software.
 
-// ########################################################
-// Function to handle signal for graceful shutdown
-void signalHandler(int signal) {
-    if (signal == SIGINT || signal == SIGTERM) {
-        running = false;
-        queueCV.notify_all();  // Wake up processing threads
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+// SOFTWARE.
+#include "vizPoints_utils.hpp"
 
-        const char* message = "Shutting down listeners and processors...\n";
-        ssize_t result = write(STDOUT_FILENO, message, strlen(message));
-        if (result < 0) {
-            // Optional: Log an error or take action (unlikely necessary in a signal handler)
-        }
-    }
-}
-// ########################################################
-// Function to set thread affinity
-void setThreadAffinity(const std::vector<int>& coreIDs) {
-    if (coreIDs.empty()) {
-        std::lock_guard<std::mutex> lock(consoleMutex);
-        std::cerr << "Warning: No core IDs provided. Thread affinity not set.\n";
-        return;
-    }
+// -----------------------------------------------------------------------------
+/**
+ * @brief Static atomic flag indicating whether the program is running.
+ *
+ * @detail This static flag is used to control the program's termination state. 
+ * It is shared across all instances of the class and is accessed and modified 
+ * to manage whether the program should continue running or stop. The flag is atomic, 
+ * ensuring safe access in a multithreaded environment.
+ */
+std::atomic<bool> vizPointsUtils::running(true);  // Initialize as true
 
-    cpu_set_t cpuset;
-    CPU_ZERO(&cpuset);
+// -----------------------------------------------------------------------------
+/**
+ * @brief Static unique pointer to the shared OccupancyMap instance.
+ *
+ * @detail This static unique pointer holds a shared instance of the `OccupancyMap` class. 
+ * It ensures that only one instance of the `OccupancyMap` object is used across all 
+ * instances of the `vizPointsUtils` class. The instance is lazily initialized when needed.
+ */
+std::unique_ptr<OccupancyMap> vizPointsUtils::occupancyMapInstance = nullptr;  // Initialize as nullptr
 
-    unsigned int maxCores = std::thread::hardware_concurrency();
+// -----------------------------------------------------------------------------
+/**
+ * @brief Static unique pointer to the shared ClusterExtractor instance.
+ *
+ * @detail This static unique pointer holds a shared instance of the `ClusterExtractor` class. 
+ * It is used for cluster analysis and ensures that only one instance of `ClusterExtractor` 
+ * is used across all `vizPointsUtils` instances. The instance is lazily initialized when needed.
+ */
+std::unique_ptr<ClusterExtractor> vizPointsUtils::clusterExtractorInstance = nullptr;  // Initialize as nullptr
 
-    // Add specified cores to the CPU set
-    for (int coreID : coreIDs) {
-        if (coreID < 0 || coreID >= static_cast<int>(maxCores)) {
-            std::lock_guard<std::mutex> lock(consoleMutex);
-            std::cerr << "Error: Invalid core ID " << coreID << ". Skipping.\n";
-            continue;
-        }
-        CPU_SET(coreID, &cpuset);
-    }
-
-    // Apply the CPU set to the current thread
-    pthread_t thread = pthread_self();
-    if (pthread_setaffinity_np(thread, sizeof(cpu_set_t), &cpuset) != 0) {
-        std::lock_guard<std::mutex> lock(consoleMutex);
-        std::cerr << "Error: Failed to set thread affinity. " << std::strerror(errno) << "\n";
-    } else {
-        std::lock_guard<std::mutex> lock(consoleMutex);
-        std::cout << "Thread restricted to cores: ";
-        for (int coreID : coreIDs) {
-            if (coreID >= 0 && coreID < static_cast<int>(maxCores)) {
-                std::cout << coreID << " ";
-            }
-        }
-        std::cout << std::endl;
-    }
-}
-// ########################################################
-// Function to start a UDP listener in a separate thread
-void startListener(boost::asio::io_context& ioContext, const std::string& host, uint16_t port,
-                   uint32_t bufferSize, const std::vector<int>& allowedCores,
-                   CallbackPoints& callbackProcessor, CallbackPoints::Points& latestPoints,
-                   std::mutex& dataMutex, std::condition_variable& dataReadyCV, 
-                   std::atomic<bool>& dataAvailable) {
-    setThreadAffinity(allowedCores);
-
-    if (host.empty() || port == 0) {
-        std::lock_guard<std::mutex> lock(consoleMutex);
-        std::cerr << "Invalid host or port specified: host='" << host << "', port=" << port << std::endl;
-        return;
-    }
-
-    try {
-        // Initialize the UDP socket
-        UDPSocket listener(ioContext, host, port, [&](const std::vector<uint8_t>& data) {
-            {
-                std::lock_guard<std::mutex> lock(consoleMutex);
-                auto now = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
-                std::cout << "[" << std::put_time(std::localtime(&now), "%F %T")
-                          << "] Received packet of size: " << data.size() << " bytes on port: " << port << std::endl;
-            }
-
-            {   
-                // Process the packet
-                std::lock_guard<std::mutex> lock(dataMutex);
-                callbackProcessor.process(data, latestPoints);
-
-                {
-                    std::lock_guard<std::mutex> cvLock(consoleMutex); // Ensure thread-safety
-                    dataAvailable = true;
-                }
-                dataReadyCV.notify_one(); // Notify the processing thread
-
-                // Debug output for verification
-                std::cout << "Updated Frame ID: " << latestPoints.frameID 
-                          << ", Number of Points: " << latestPoints.numVal << std::endl;
-            }
-        }, bufferSize);
-
-        {
-            auto now = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
-            std::lock_guard<std::mutex> lock(consoleMutex);
-            std::cout << "[" << std::put_time(std::localtime(&now), "%F %T") << "] Started listening on "
-                      << host << ":" << port << std::endl;
-        }
-
-        // Run the io_context in the current thread
-        int errorCount = 0;
-        const int maxErrors = 10;
-
-        while (running) {
-            try {
-                ioContext.run();
-            } catch (const std::exception& e) {
-                errorCount++;
-                if (errorCount <= maxErrors) {
-                    std::lock_guard<std::mutex> lock(consoleMutex);
-                    std::cerr << "Listener encountered an error: " << e.what() << ". Restarting..." << std::endl;
-                }
-                if (errorCount == maxErrors) {
-                    std::cerr << "Error log limit reached. Suppressing further error logs.\n";
-                }
-                ioContext.restart();
-            }
-        }
-
-    } catch (const std::exception& e) {
-        std::lock_guard<std::mutex> lock(consoleMutex);
-        std::cerr << "Failed to start listener on " << host << ":" << port << ": " << e.what() << std::endl;
-        return;
-    }
-
-    // Graceful shutdown
-    ioContext.stop();
-    {
-        std::lock_guard<std::mutex> lock(consoleMutex);
-        std::cout << "Stopped listener on " << host << ":" << port << std::endl;
-    }
-}
-// ########################################################
-// Main initializeSharedResources
-void initializeSharedResources() {
-    if (!occupancyMapInstance) {
-        occupancyMapInstance = std::make_unique<OccupancyMap>(mapConfig.resolution, mapConfig.reachingDistance, mapConfig.center);
-    }
-    if (!clusterExtractorInstance) {
-        clusterExtractorInstance = std::make_unique<ClusterExtractor>(
-            clusterConfig.tolerance, clusterConfig.minSize, clusterConfig.maxSize,
-            clusterConfig.staticThreshold, clusterConfig.dynamicScoreThreshold,
-            clusterConfig.densityThreshold, clusterConfig.velocityThreshold,
-            clusterConfig.similarityThreshold, clusterConfig.maxDistanceThreshold, clusterConfig.dt);
-    }
-}
-// ########################################################
-// Processing function to consume data at a fixed rate (10 Hz)
-void pointToWorkWith(CallbackPoints::Points& points, CallbackPoints::Points& attributes,
-                     const std::vector<int>& allowedCores) {
-    setThreadAffinity(allowedCores);
-
-    const auto targetCycleDuration = std::chrono::milliseconds(100); // 10 Hz target
-
-    while (running) {
-        auto cycleStartTime = std::chrono::steady_clock::now();
-
-        {
-            std::scoped_lock lock(pointsMutex, attributesMutex, consoleMutex, occupancyMapMutex);
-            // Process points and attributes
-            if (points.frameID == attributes.frameID && points.numVal > 0) {
-                // Extract a subset of points from points.val
-                std::vector<Eigen::Vector3f> pointCloud(points.val.begin(), points.val.begin() + points.numVal);
-
-                // Pre-size attribute vectors
-                std::vector<float> intensity(attributes.numVal);
-                std::vector<float> reflectivity(attributes.numVal);
-                std::vector<float> NIR(attributes.numVal);
-
-                // Parse attributes into separate vectors
-                std::transform(attributes.val.begin(), attributes.val.begin() + attributes.numVal, intensity.begin(),
-                            [](const Eigen::Vector3f& vec) { return vec.x(); });
-                std::transform(attributes.val.begin(), attributes.val.begin() + attributes.numVal, reflectivity.begin(),
-                            [](const Eigen::Vector3f& vec) { return vec.y(); });
-                std::transform(attributes.val.begin(), attributes.val.begin() + attributes.numVal, NIR.begin(),
-                            [](const Eigen::Vector3f& vec) { return vec.z(); });
-
-                // Run clustering and occupancy map pipelines
-                // clusterExtractorInstance->runClusterExtractorPipeline(pointCloud, intensity, reflectivity, NIR);
-                // Retrieve dynamic clusters
-                // auto dynamicClusters = clusterExtractorInstance->getDynamicClusters();
-
-                // if (!dynamicClusters.empty()) {
-                //     // Get the first cluster's ID and print it
-                //     const auto& firstCluster = dynamicClusters[0];
-                //     std::cout << "First Dynamic Cluster ID: " << firstCluster.clusterID << std::endl;
-                // } else {
-                //     // No dynamic clusters were found
-                //     std::cout << "No dynamic clusters detected." << std::endl;
-                // }
-
-                occupancyMapInstance->runOccupancyMapPipeline(
-                    pointCloud, intensity, reflectivity, NIR, points.NED.cast<float>(), points.frameID);
-                
-                // auto staticVoxelVector = occupancyMapInstance->getStaticVoxels();
-
-                // Debugging output
-                std::cout << "Function running okay. Frame ID: " << points.frameID << "\n";
-                // std::cout << "static Size: " << staticVoxelVector.size() << "\n";
-            }
-        }
-
-        // Calculate elapsed time and handle sleep
-        auto elapsedTime = std::chrono::steady_clock::now() - cycleStartTime;
-        auto remainingSleepTime = targetCycleDuration - elapsedTime;
-
-        if (remainingSleepTime > std::chrono::milliseconds(0)) {
-            std::this_thread::sleep_for(remainingSleepTime);
-            std::cout << "Processing Time: " 
-                      << std::chrono::duration_cast<std::chrono::milliseconds>(elapsedTime).count()<< "\n";;
-        } else {
-            std::lock_guard<std::mutex> lock(consoleMutex);
-            std::cout << "Warning: Processing took longer than 100 ms. Time: " 
-                      << std::chrono::duration_cast<std::chrono::milliseconds>(elapsedTime).count()
-                      << " ms. Skipping sleep.\n";
-        }
-    }
-}
-// ########################################################
-// Main Function
+// -----------------------------------------------------------------------------
+/**
+ * @brief Main entry point for the program that listens to incoming UDP packets and processes them.
+ *
+ * @detail This function initializes the `vizPointsUtils` class, registers signal handlers for termination signals (SIGINT and SIGTERM), and starts multiple threads to handle UDP listening for points and attributes. It also manages the synchronization of data between threads using condition variables and mutexes. The program listens for incoming data, processes it in real-time (at a frequency of 10 Hz), and gracefully shuts down when a termination signal is received.
+ *
+ * The flow of execution includes:
+ * - Registering signal handlers for graceful shutdown.
+ * - Starting listener threads for receiving points and attributes data.
+ * - Starting a processing thread to handle the data at regular intervals.
+ * - Monitoring the program's running state and stopping the listeners and threads when the program is signaled to terminate.
+ */
 int main() {
-    // Register signal handler
+
+    // Register signal handler using the static signalHandler method
     struct sigaction sigIntHandler;
-    sigIntHandler.sa_handler = signalHandler;
+    sigIntHandler.sa_handler = vizPointsUtils::signalHandler;  // Directly use static method
     sigemptyset(&sigIntHandler.sa_mask);
     sigIntHandler.sa_flags = 0;
 
@@ -273,10 +82,8 @@ int main() {
     CallbackPoints callbackPoints_, callbackAttributes_;
 
     // Synchronization primitives
-    std::condition_variable dataReadyCV;
-    std::atomic<bool> dataAvailable(false);
-
-    initializeSharedResources();  // Encapsulated lazy initialization
+    std::condition_variable pointsDataReadyCV, attributesDataReadyCV;
+    std::atomic<bool> pointDataAvailable(false), attributesDataAvailable(false);
 
     try {
         std::vector<std::thread> threads;
@@ -287,45 +94,51 @@ int main() {
         std::string attributesHost = "127.0.0.1";
         uint16_t attributesPort = 61235;
 
-        // Start points Listener
+        // Start points Listener using the static method
         boost::asio::io_context ioContextPoints;
         threads.emplace_back(
-            startListener, 
-            std::ref(ioContextPoints),         // Pass io_context by reference
-            pointsHost,                        // Copy string (simple type)
-            pointsPort,                        // Copy port number (simple type)
-            1393,                              // Copy bufferSize (simple type)
-            std::vector<int>{8},               // Pass vector (temporary, can be moved)
-            std::ref(callbackPoints_),         // Pass callbackProcessor by reference
-            std::ref(points_),                 // Pass latestPoints by reference
-            std::ref(pointsMutex),             // Pass mutex by reference
-            std::ref(dataReadyCV),             // Pass condition_variable by reference
-            std::ref(dataAvailable)            // Pass atomic<bool> by reference
+            [&]() { 
+                vizPointsUtils::startListener(
+                    ioContextPoints, 
+                    pointsHost, 
+                    pointsPort, 
+                    1393, 
+                    std::vector<int>{8}, 
+                    callbackPoints_, 
+                    points_, 
+                    vizPointsUtils::pointsMutex,  // Access static mutex
+                    pointsDataReadyCV, 
+                    pointDataAvailable
+                );
+            }
         );
 
-        // Start attributes Listener
+        // Start attributes Listener using the static method
         boost::asio::io_context ioContextAttributes;
         threads.emplace_back(
-            startListener, 
-            std::ref(ioContextAttributes),     // Pass io_context by reference
-            attributesHost,                    // Copy string (simple type)
-            attributesPort,                    // Copy port number (simple type)
-            1393,                              // Copy bufferSize (simple type)
-            std::vector<int>{9},               // Pass vector (temporary, can be moved)
-            std::ref(callbackAttributes_),     // Pass callbackProcessor by reference
-            std::ref(attributes_),             // Pass latestPoints by reference
-            std::ref(attributesMutex),         // Pass mutex by reference
-            std::ref(dataReadyCV),             // Pass condition_variable by reference
-            std::ref(dataAvailable)            // Pass atomic<bool> by reference
+            [&]() { 
+                vizPointsUtils::startListener(
+                    ioContextAttributes, 
+                    attributesHost, 
+                    attributesPort, 
+                    1393, 
+                    std::vector<int>{9}, 
+                    callbackAttributes_, 
+                    attributes_, 
+                    vizPointsUtils::attributesMutex,  // Access static mutex
+                    attributesDataReadyCV, 
+                    attributesDataAvailable
+                );
+            }
         );
 
         // Start Processing (10 Hz)
         threads.emplace_back([&]() {
-            pointToWorkWith(std::ref(points_), std::ref(attributes_), std::vector<int>{0, 1, 2, 3});
+            vizPointsUtils::pointToWorkWith(points_, attributes_, std::vector<int>{0, 1, 2, 3});
         });
 
         // Monitor signal and clean up
-        while (running) {
+        while (vizPointsUtils::running) {
             std::this_thread::sleep_for(std::chrono::milliseconds(100));
         }
 
@@ -348,5 +161,3 @@ int main() {
     std::cout << "All listeners stopped. Exiting program." << std::endl;
     return EXIT_SUCCESS;
 }
-
-

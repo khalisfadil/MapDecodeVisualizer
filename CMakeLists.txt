@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.16)
 project(vizDynamicMap)
 
 # Set the C++ standard
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # Set build types
@@ -35,13 +35,10 @@ message(STATUS "PCL Libraries: ${PCL_LIBRARIES}")
 
 # Core library
 add_library(core STATIC
-    source/callback/src/callbackStaticVoxel.cpp
-    source/callback/src/callbackDynamicVoxel.cpp
-    source/callback/src/callbackDynamicVoxelColor.cpp
-    source/callback/src/callbackStaticVoxelColor.cpp
     source/callback/src/udpSocket.cpp
     source/callback/src/callbackPoints.cpp
     source/viewer/src/top_down_viewer.cpp
+    source/utils/src/vizPoints_utils.cpp
     source/3rdparty/dynamic-map/source/core/src/clusterExtractor.cpp
     source/3rdparty/dynamic-map/source/core/src/EKFVelocity2D.cpp
     source/3rdparty/dynamic-map/source/core/src/occupancyMap.cpp
@@ -53,6 +50,7 @@ target_include_directories(core PUBLIC
     ${CMAKE_SOURCE_DIR}/source/3rdparty/dynamic-map/source/core/include
     ${CMAKE_SOURCE_DIR}/source/callback/include
     ${CMAKE_SOURCE_DIR}/source/viewer/include
+    ${CMAKE_SOURCE_DIR}/source/utils/include
     ${PCL_INCLUDE_DIRS} # PCL include directories
 )
 
@@ -75,6 +73,7 @@ target_include_directories(vizPoints PRIVATE
     ${CMAKE_SOURCE_DIR}/source/3rdparty/dynamic-map/source/core/include
     ${CMAKE_SOURCE_DIR}/source/callback/include
     ${CMAKE_SOURCE_DIR}/source/viewer/include
+    ${CMAKE_SOURCE_DIR}/source/utils/include
     ${PCL_INCLUDE_DIRS} # PCL include directories
 )
 
