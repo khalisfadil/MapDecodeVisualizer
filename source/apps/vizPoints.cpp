@@ -220,14 +220,14 @@ void pointToWorkWith(CallbackPoints::Points& points, CallbackPoints::Points& att
                 // Retrieve dynamic clusters
                 auto dynamicClusters = clusterExtractorInstance->getDynamicClusters();
 
-                if (!dynamicClusters.empty()) {
-                    // Get the first cluster's ID and print it
-                    const auto& firstCluster = dynamicClusters[0];
-                    std::cout << "First Dynamic Cluster ID: " << firstCluster.clusterID << std::endl;
-                } else {
-                    // No dynamic clusters were found
-                    std::cout << "No dynamic clusters detected." << std::endl;
-                }
+                // if (!dynamicClusters.empty()) {
+                //     // Get the first cluster's ID and print it
+                //     const auto& firstCluster = dynamicClusters[0];
+                //     std::cout << "First Dynamic Cluster ID: " << firstCluster.clusterID << std::endl;
+                // } else {
+                //     // No dynamic clusters were found
+                //     std::cout << "No dynamic clusters detected." << std::endl;
+                // }
 
                 // occupancyMapInstance->runOccupancyMapPipeline(
                 //     pointCloud, intensity, reflectivity, NIR, dynamicCloud, points.NED.cast<float>(), points.frameID);
