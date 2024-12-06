@@ -214,7 +214,7 @@ void pointToWorkWith(CallbackPoints::Points& points, CallbackPoints::Points& att
                             [](const Eigen::Vector3f& vec) { return vec.z(); });
 
                 // Run clustering and occupancy map pipelines
-                clusterExtractorInstance->runClusterExtractorPipeline(pointCloud, intensity, reflectivity, NIR);
+                // clusterExtractorInstance->runClusterExtractorPipeline(pointCloud, intensity, reflectivity, NIR);
                 // Retrieve dynamic clusters
                 // auto dynamicClusters = clusterExtractorInstance->getDynamicClusters();
 
@@ -227,8 +227,8 @@ void pointToWorkWith(CallbackPoints::Points& points, CallbackPoints::Points& att
                 //     std::cout << "No dynamic clusters detected." << std::endl;
                 // }
 
-                // occupancyMapInstance->runOccupancyMapPipeline(
-                //     pointCloud, intensity, reflectivity, NIR, dynamicCloud, points.NED.cast<float>(), points.frameID);
+                occupancyMapInstance->runOccupancyMapPipeline(
+                    pointCloud, intensity, reflectivity, NIR, points.NED.cast<float>(), points.frameID);
                 
                 // auto staticVoxelVector = occupancyMapInstance->getStaticVoxels();
 
