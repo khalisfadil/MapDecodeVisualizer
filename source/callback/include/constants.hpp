@@ -15,7 +15,7 @@ struct MapConfig {
 struct ClusterConfig {
     float tolerance = 0.1f;
     int minSize = 10;
-    int maxSize = 5000;
+    int maxSize = 8000;
     float staticThreshold = 0.1f;
     float dynamicScoreThreshold = 0.5f;
     float densityThreshold = 0.1f;
