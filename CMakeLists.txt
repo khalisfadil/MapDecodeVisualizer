@@ -35,10 +35,10 @@ message(STATUS "PCL Libraries: ${PCL_LIBRARIES}")
 
 # Core library
 add_library(core STATIC
-    source/callback/src/udpSocket.cpp
     source/callback/src/callbackPoints.cpp
     source/viewer/src/top_down_viewer.cpp
     source/utils/src/vizPoints_utils.cpp
+    source/utils/src/udpSocket.cpp
     source/3rdparty/dynamic-map/source/core/src/clusterExtractor.cpp
     source/3rdparty/dynamic-map/source/core/src/EKFVelocity2D.cpp
     source/3rdparty/dynamic-map/source/core/src/occupancyMap.cpp
