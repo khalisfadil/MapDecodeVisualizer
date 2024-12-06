@@ -188,9 +188,7 @@ void pointToWorkWith(CallbackPoints::Points& points, CallbackPoints::Points& att
                      const std::vector<int>& allowedCores) {
     setThreadAffinity(allowedCores);
 
-    const auto targetCycleDuration = std::chrono::milliseconds(100); // 10 Hz target
-
-    initializeSharedResources();  // Encapsulated lazy initialization
+    const auto targetCycleDuration = std::chrono::milliseconds(500); // 10 Hz target
 
     while (running) {
         auto cycleStartTime = std::chrono::steady_clock::now();
@@ -218,7 +216,7 @@ void pointToWorkWith(CallbackPoints::Points& points, CallbackPoints::Points& att
                 // Run clustering and occupancy map pipelines
                 clusterExtractorInstance->runClusterExtractorPipeline(pointCloud, intensity, reflectivity, NIR);
                 // Retrieve dynamic clusters
-                auto dynamicClusters = clusterExtractorInstance->getDynamicClusters();
+                // auto dynamicClusters = clusterExtractorInstance->getDynamicClusters();
 
                 // if (!dynamicClusters.empty()) {
                 //     // Get the first cluster's ID and print it
@@ -278,6 +276,8 @@ int main() {
     std::condition_variable dataReadyCV;
     std::atomic<bool> dataAvailable(false);
 
+    initializeSharedResources();  // Encapsulated lazy initialization
+
     try {
         std::vector<std::thread> threads;
 
@@ -321,7 +321,7 @@ int main() {
 
         // Start Processing (10 Hz)
         threads.emplace_back([&]() {
-            pointToWorkWith(std::ref(points_), std::ref(attributes_), std::vector<int>{0, 1, 2, 3, 4, 5, 6, 7});
+            pointToWorkWith(std::ref(points_), std::ref(attributes_), std::vector<int>{0, 1, 2, 3});
         });
 
         // Monitor signal and clean up
