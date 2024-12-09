@@ -1,3 +1,24 @@
+// MIT License
+
+// Copyright (c) 2024 Muhammad Khalis bin Mohd Fadil
+
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+
+// The above copyright notice and this permission notice shall be included in all
+// copies or substantial portions of the Software.
+
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+// SOFTWARE.
 #pragma once
 
 #include <cstdint>
@@ -7,6 +28,7 @@
 #include <boost/asio.hpp>
 #include <iomanip>
 
+// -----------------------------------------------------------------------------
 /**
  * @class UDPSocket
  * @brief A class for handling UDP communication using Boost.Asio.
@@ -16,6 +38,8 @@
  */
 class UDPSocket {
 public:
+
+    // -----------------------------------------------------------------------------
     /**
      * @brief Constructor to initialize the UDP socket.
      * 
@@ -32,6 +56,7 @@ public:
               std::function<void(const std::vector<uint8_t>&)> callback,
               uint32_t bufferSize = 65535);
 
+    // -----------------------------------------------------------------------------
     /**
      * @brief Destructor to clean up the UDP socket.
      *
@@ -39,6 +64,7 @@ public:
      */
     ~UDPSocket();
 
+    // -----------------------------------------------------------------------------
     /**
      * @brief Starts the asynchronous receive operation.
      *
@@ -47,6 +73,7 @@ public:
      */
     void startReceive();
 
+    // -----------------------------------------------------------------------------
     /**
      * @brief Stops the UDP socket.
      *
@@ -56,9 +83,45 @@ public:
     void stop();
 
 private:
-    boost::asio::ip::udp::socket socket_;                         ///< UDP socket used for communication.
-    boost::asio::ip::udp::endpoint senderEndpoint_;               ///< Endpoint of the sender.
-    std::vector<uint8_t> buffer_;                                 ///< Buffer for storing incoming packet data.
-    std::function<void(const std::vector<uint8_t>&)> callback_;   ///< Callback for processing incoming packets.
+
+    // -----------------------------------------------------------------------------
+    /**
+     * @brief UDP socket used for communication.
+     *
+     * This socket is responsible for sending and receiving UDP packets.
+     * It is initialized with the appropriate I/O context and endpoint for communication.
+     */
+    boost::asio::ip::udp::socket socket_;                         
+
+    // -----------------------------------------------------------------------------
+    /**
+     * @brief Endpoint of the sender.
+     *
+     * This variable holds information about the remote sender's address and port.
+     * It is updated with the sender's details whenever a new packet is received.
+     */
+    boost::asio::ip::udp::endpoint senderEndpoint_;               
+
+    // -----------------------------------------------------------------------------
+    /**
+     * @brief Buffer for storing incoming packet data.
+     *
+     * This vector serves as temporary storage for raw data received over the UDP socket.
+     * It is passed to the callback function for processing after data is received.
+     */
+    std::vector<uint8_t> buffer_;                                 
+
+    // -----------------------------------------------------------------------------
+    /**
+     * @brief Callback for processing incoming packets.
+     *
+     * This callback function is invoked whenever a new packet is received.
+     * It processes the data stored in the buffer and enables custom handling
+     * of the incoming packet by the application.
+     *
+     * @param data The raw packet data received from the UDP socket.
+     */
+    std::function<void(const std::vector<uint8_t>&)> callback_; 
+      
 };
 

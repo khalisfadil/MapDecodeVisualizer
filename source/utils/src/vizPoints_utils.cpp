@@ -53,15 +53,6 @@ std::mutex vizPointsUtils::attributesMutex;
 
 // -----------------------------------------------------------------------------
 /**
- * @brief Mutex for synchronizing access to the occupancy map.
- * 
- * @details Protects the shared occupancy map data structure, ensuring 
- * consistency and thread-safety during concurrent access and updates.
- */
-std::mutex vizPointsUtils::occupancyMapMutex;
-
-// -----------------------------------------------------------------------------
-/**
  * @brief Static atomic flag indicating whether the program is running.
  *
  * @detail This static flag is used to control the program's termination state. 
@@ -99,6 +90,115 @@ std::unique_ptr<OccupancyMap> vizPointsUtils::occupancyMapInstance = nullptr;
  * clustering functionality across the application.
  */
 std::unique_ptr<ClusterExtractor> vizPointsUtils::clusterExtractorInstance = nullptr;
+
+// -----------------------------------------------------------------------------
+/**
+ * @brief Stores the voxel centers of the static map.
+ *
+ * This vector contains the 3D positions of voxel centers that represent the static map.
+ * It is updated in real-time and shared across threads for visualization or further processing.
+ */
+std::vector<Eigen::Vector3f> vizPointsUtils::receivedStaticVoxels;
+
+// -----------------------------------------------------------------------------
+/**
+ * @brief Stores colors corresponding to voxel occupancy states.
+ *
+ * Each element represents the RGB color encoding of a voxel's occupancy state.
+ * It is used for rendering the occupancy map in visualization pipelines.
+ */
+std::vector<Eigen::Vector3i> vizPointsUtils::receivedOccupancyColors;
+
+// -----------------------------------------------------------------------------
+/**
+ * @brief Stores colors corresponding to voxel reflectivity values.
+ *
+ * This vector contains the RGB color encoding of reflectivity values for each voxel.
+ * Reflectivity values are typically derived from sensor data and used in visualization.
+ */
+std::vector<Eigen::Vector3i> vizPointsUtils::receivedReflectivityColors;
+
+// -----------------------------------------------------------------------------
+/**
+ * @brief Stores colors corresponding to voxel intensity values.
+ *
+ * Each element represents the RGB color encoding of intensity values for each voxel.
+ * Intensity values are typically derived from sensor readings and visualized to indicate
+ * the strength of the sensor return signal.
+ */
+std::vector<Eigen::Vector3i> vizPointsUtils::receivedIntensityColors;
+
+// -----------------------------------------------------------------------------
+/**
+ * @brief Stores colors corresponding to voxel Near-Infrared (NIR) values.
+ *
+ * This vector contains the RGB color encoding of NIR data for each voxel. NIR values
+ * are often used in specialized visualization tasks or applications requiring spectral data.
+ */
+std::vector<Eigen::Vector3i> vizPointsUtils::receivedNIRColors;
+
+// -----------------------------------------------------------------------------
+/**
+ * @brief Condition variable to signal availability of new point data.
+ *
+ * This condition variable is used to notify waiting threads when new point cloud data
+ * is available for processing.
+ */
+std::condition_variable vizPointsUtils::pointsDataReadyCV;
+
+// -----------------------------------------------------------------------------
+/**
+ * @brief Condition variable to signal availability of new attribute data.
+ *
+ * This condition variable is used to notify waiting threads when new point attribute data
+ * (e.g., intensity, reflectivity, NIR) is available for processing.
+ */
+std::condition_variable vizPointsUtils::attributesDataReadyCV;
+
+// -----------------------------------------------------------------------------
+/**
+ * @brief Flag indicating whether new point cloud data is available.
+ *
+ * This atomic flag is set to true when new point cloud data is ready for processing,
+ * and false when data has been consumed.
+ */
+std::atomic<bool> vizPointsUtils::pointsDataAvailable(false);
+
+// -----------------------------------------------------------------------------
+/**
+ * @brief Flag indicating whether new attribute data is available.
+ *
+ * This atomic flag is set to true when new point attribute data (e.g., intensity, reflectivity, NIR)
+ * is ready for processing, and false when data has been consumed.
+ */
+std::atomic<bool> vizPointsUtils::attributesDataAvailable(false);
+
+// -----------------------------------------------------------------------------
+/**
+ * @brief Stores the current frame ID.
+ *
+ * This variable tracks the frame ID of the latest data being processed. It is used
+ * for synchronization and to ensure consistency across point cloud and attribute data.
+ */
+uint32_t vizPointsUtils::frameID;
+
+// -----------------------------------------------------------------------------
+/**
+ * @brief Stores the current position of the vehicle or reference point.
+ *
+ * This vector represents the 3D position (X, Y, Z) of the vehicle or a reference point
+ * in the global frame. It is updated in real-time as new data is received.
+ */
+Eigen::Vector3f vizPointsUtils::position;
+
+// -----------------------------------------------------------------------------
+/**
+ * @brief Stores the current orientation of the vehicle.
+ *
+ * This vector represents the roll, pitch, and yaw (RPY) orientation of the vehicle
+ * in radians. It is updated in real-time as new data is received.
+ */
+Eigen::Vector3f vizPointsUtils::orientation;
 
 // -----------------------------------------------------------------------------
 /**
@@ -146,12 +246,29 @@ void vizPointsUtils::initialize() {
 }
 
 // -----------------------------------------------------------------------------
+// Section: runOccupancyMapViewer
+// -----------------------------------------------------------------------------
+
+void vizPointsUtils::SetupTopDownView(open3d::visualization::Visualizer& vis, double cameraHeight = -8.0) {
+    auto view_control = vis.GetViewControl();
+    open3d::camera::PinholeCameraParameters camera_params;
+    view_control.ConvertToPinholeCameraParameters(camera_params);
+    camera_params.extrinsic_ <<
+        1, 0, 0, 0,                  // Camera X-axis
+        0, 0, 1, cameraHeight,       // Camera Y-axis (down -Z, height set by cameraHeight)
+        0, -1, 0, 0,                 // Camera Z-axis (up vector)
+        0, 0, 0, 1;                  // Homogeneous coordinates
+    view_control.ConvertFromPinholeCameraParameters(camera_params);
+}
+
+// -----------------------------------------------------------------------------
 // Section: setThreadAffinity
 // -----------------------------------------------------------------------------
 
-void vizPointsUtils::setThreadAffinity(const std::vector<int>& coreIDs) {
+void vizPointsUtils::setThreadAffinity(const std::vector<int>& coreIDs, 
+                                        std::mutex& consoleMutex) {
     if (coreIDs.empty()) {
-        std::lock_guard<std::mutex> lock(consoleMutex);
+        std::lock_guard<std::mutex> consoleLock(consoleMutex);
         std::cerr << "Warning: No core IDs provided. Thread affinity not set.\n";
         return;
     }
@@ -164,7 +281,7 @@ void vizPointsUtils::setThreadAffinity(const std::vector<int>& coreIDs) {
     // Add specified cores to the CPU set
     for (int coreID : coreIDs) {
         if (coreID < 0 || coreID >= static_cast<int>(maxCores)) {
-            std::lock_guard<std::mutex> lock(consoleMutex);
+            std::lock_guard<std::mutex> consoleLock(consoleMutex);
             std::cerr << "Error: Invalid core ID " << coreID << ". Skipping.\n";
             continue;
         }
@@ -174,10 +291,10 @@ void vizPointsUtils::setThreadAffinity(const std::vector<int>& coreIDs) {
     // Apply the CPU set to the current thread
     pthread_t thread = pthread_self();
     if (pthread_setaffinity_np(thread, sizeof(cpu_set_t), &cpuset) != 0) {
-        std::lock_guard<std::mutex> lock(consoleMutex);
+        std::lock_guard<std::mutex> consoleLock(consoleMutex);
         std::cerr << "Error: Failed to set thread affinity. " << std::strerror(errno) << "\n";
     } else {
-        std::lock_guard<std::mutex> lock(consoleMutex);
+        std::lock_guard<std::mutex> consoleLock(consoleMutex);
         std::cout << "Thread restricted to cores: ";
         for (int coreID : coreIDs) {
             if (coreID >= 0 && coreID < static_cast<int>(maxCores)) {
@@ -192,15 +309,22 @@ void vizPointsUtils::setThreadAffinity(const std::vector<int>& coreIDs) {
 // Section: startListener
 // -----------------------------------------------------------------------------
 
-void vizPointsUtils::startListener(boost::asio::io_context& ioContext, const std::string& host, uint16_t port,
-                                   uint32_t bufferSize, const std::vector<int>& allowedCores,
-                                   CallbackPoints& callbackProcessor, CallbackPoints::Points& latestPoints,
-                                   std::mutex& dataMutex, std::condition_variable& dataReadyCV,
-                                   std::atomic<bool>& dataAvailable) {
-    setThreadAffinity(allowedCores);
+void vizPointsUtils::startListener(boost::asio::io_context& ioContext, 
+                                   const std::string& host, 
+                                   uint16_t port,
+                                   uint32_t bufferSize, 
+                                   const std::vector<int>& allowedCores,
+                                   CallbackPoints& callbackProcessor, 
+                                   CallbackPoints::Points& latestPoints,
+                                   std::mutex& consoleMutex,
+                                   std::mutex& dataMutex, 
+                                   std::condition_variable& dataReadyCV,
+                                   std::atomic<bool>& dataAvailable, 
+                                   std::atomic<bool>& running) {
+    setThreadAffinity(allowedCores,consoleMutex);
 
     if (host.empty() || port == 0) {
-        std::lock_guard<std::mutex> lock(consoleMutex);
+        std::lock_guard<std::mutex> consoleLock(consoleMutex);
         std::cerr << "Invalid host or port specified: host='" << host << "', port=" << port << std::endl;
         return;
     }
@@ -217,7 +341,7 @@ void vizPointsUtils::startListener(boost::asio::io_context& ioContext, const std
 
             {
                 // Protect dataAvailable with dataMutex
-                std::lock_guard<std::mutex> lock(dataMutex);
+                std::lock_guard<std::mutex> dataLock(dataMutex);
                 callbackProcessor.process(data, latestPoints);
                 dataAvailable = true;
             }
@@ -234,7 +358,7 @@ void vizPointsUtils::startListener(boost::asio::io_context& ioContext, const std
 
         {
             auto now = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
-            std::lock_guard<std::mutex> lock(consoleMutex);
+            std::lock_guard<std::mutex> consoleLock(consoleMutex);
             std::cout << "[" << std::put_time(std::localtime(&now), "%F %T") << "] Started listening on "
                       << host << ":" << port << std::endl;
         }
@@ -249,7 +373,7 @@ void vizPointsUtils::startListener(boost::asio::io_context& ioContext, const std
             } catch (const std::exception& e) {
                 errorCount++;
                 if (errorCount <= maxErrors) {
-                    std::lock_guard<std::mutex> lock(consoleMutex);
+                    std::lock_guard<std::mutex> consoleLock(consoleMutex);
                     std::cerr << "Listener encountered an error: " << e.what() << ". Restarting..." << std::endl;
                 }
                 if (errorCount == maxErrors) {
@@ -260,7 +384,7 @@ void vizPointsUtils::startListener(boost::asio::io_context& ioContext, const std
         }
 
     } catch (const std::exception& e) {
-        std::lock_guard<std::mutex> lock(consoleMutex);
+        std::lock_guard<std::mutex> consoleLock(consoleMutex);
         std::cerr << "Failed to start listener on " << host << ":" << port << ": " << e.what() << std::endl;
         return;
     }
@@ -268,7 +392,7 @@ void vizPointsUtils::startListener(boost::asio::io_context& ioContext, const std
     // Graceful shutdown
     ioContext.stop();
     {
-        std::lock_guard<std::mutex> lock(consoleMutex);
+        std::lock_guard<std::mutex> consoleLock(consoleMutex);
         std::cout << "Stopped listener on " << host << ":" << port << std::endl;
     }
 }
@@ -280,7 +404,7 @@ void vizPointsUtils::startListener(boost::asio::io_context& ioContext, const std
 void vizPointsUtils::signalHandler(int signal) {
     if (signal == SIGINT || signal == SIGTERM) {
         // Set the running flag to false to signal the program to stop
-        running = false;
+        vizPointsUtils::running = false;
         
         // Notify waiting threads, in case any are blocked
         queueCV.notify_all();  
@@ -295,14 +419,27 @@ void vizPointsUtils::signalHandler(int signal) {
 }
 
 // -----------------------------------------------------------------------------
-// Section: pointToWorkWith
+// Section: runOccupancyMapPipeline
 // -----------------------------------------------------------------------------
 
-void vizPointsUtils::pointToWorkWith(CallbackPoints::Points& points, CallbackPoints::Points& attributes,
-                     const std::vector<int>& allowedCores) {
-    setThreadAffinity(allowedCores);
+void vizPointsUtils::runOccupancyMapPipeline(CallbackPoints::Points& points, CallbackPoints::Points& attributes, 
+                                             uint32_t& frameID,
+                                             Eigen::Vector3f& position,
+                                             Eigen::Vector3f& orientation,
+                                             std::vector<Eigen::Vector3f>& staticVoxels, 
+                                             std::vector<Eigen::Vector3i>& occupancyColors, 
+                                             std::vector<Eigen::Vector3i>& reflectivityColors,
+                                             std::vector<Eigen::Vector3i>& intensityColors, 
+                                             std::vector<Eigen::Vector3i>& NIRColors,
+                                             const std::vector<int>& allowedCores,
+                                             std::atomic<bool>& running,
+                                             std::mutex& consoleMutex,
+                                             std::mutex& pointsMutex,
+                                             std::mutex& attributesMutex) {
+    // Set thread affinity for performance optimization
+    setThreadAffinity(allowedCores, consoleMutex);
 
-    const auto targetCycleDuration = std::chrono::milliseconds(100); // 10 Hz target
+    const auto targetCycleDuration = std::chrono::milliseconds(100); // Target 10 Hz processing rate
 
     initialize();
 
@@ -310,31 +447,130 @@ void vizPointsUtils::pointToWorkWith(CallbackPoints::Points& points, CallbackPoi
         auto cycleStartTime = std::chrono::steady_clock::now();
 
         {
-            std::scoped_lock lock(pointsMutex, attributesMutex, consoleMutex, occupancyMapMutex);
-            // Process points and attributes
-            if (points.frameID == attributes.frameID && points.numVal > 0) {
-                // Extract a subset of points from points.val
+            std::scoped_lock lock(pointsMutex, attributesMutex, consoleMutex);
+
+            // Validate frame synchronization and vector sizes
+            if (points.frameID == attributes.frameID && points.numVal > 0 &&
+                points.numVal <= points.val.size() && attributes.numVal <= attributes.val.size()) {
+                
+                // Extract points and attributes
                 std::vector<Eigen::Vector3f> pointCloud(points.val.begin(), points.val.begin() + points.numVal);
 
-                // Pre-size attribute vectors
                 std::vector<float> intensity(attributes.numVal);
                 std::vector<float> reflectivity(attributes.numVal);
                 std::vector<float> NIR(attributes.numVal);
 
                 // Parse attributes into separate vectors
                 std::transform(attributes.val.begin(), attributes.val.begin() + attributes.numVal, intensity.begin(),
-                            [](const Eigen::Vector3f& vec) { return vec.x(); });
+                               [](const Eigen::Vector3f& vec) { return vec.x(); });
                 std::transform(attributes.val.begin(), attributes.val.begin() + attributes.numVal, reflectivity.begin(),
-                            [](const Eigen::Vector3f& vec) { return vec.y(); });
+                               [](const Eigen::Vector3f& vec) { return vec.y(); });
                 std::transform(attributes.val.begin(), attributes.val.begin() + attributes.numVal, NIR.begin(),
-                            [](const Eigen::Vector3f& vec) { return vec.z(); });
+                               [](const Eigen::Vector3f& vec) { return vec.z(); });
 
+                // Run the occupancy map pipeline
                 occupancyMapInstance->runOccupancyMapPipeline(
                     pointCloud, intensity, reflectivity, NIR, points.NED.cast<float>(), points.frameID);
 
-                // Debugging output
-                std::cout << "Function running okay. Frame ID: " << points.frameID << "\n";
-                // std::cout << "static Size: " << staticVoxelVector.size() << "\n";
+                // Process static voxels
+                std::vector<OccupancyMap::VoxelData> staticVoxels_ = occupancyMapInstance->getStaticVoxels();
+                if (!staticVoxels_.empty()) {
+                    auto voxelColors = occupancyMapInstance->computeVoxelColors(staticVoxels_);
+                    staticVoxels = occupancyMapInstance->getVoxelCenters(staticVoxels_);
+
+                    occupancyColors = std::get<0>(voxelColors);
+                    reflectivityColors = std::get<1>(voxelColors);
+                    intensityColors = std::get<2>(voxelColors);
+                    NIRColors = std::get<3>(voxelColors);
+
+                    frameID = points.frameID;
+                    position = points.NED.cast<float>();
+                    orientation = points.RPY.cast<float>();
+                }
+
+                std::cout << "[OccupancyMapPipeline] Function running okay. Frame ID: " << frameID << "\n";
+            } else {
+                std::cerr << "[OccupancyMapPipeline] Warning: Points and attributes are not synchronized or invalid.\n";
+            }
+        }
+
+        // Timing and sleep management
+        auto elapsedTime = std::chrono::steady_clock::now() - cycleStartTime;
+        auto remainingSleepTime = targetCycleDuration - elapsedTime;
+
+        if (remainingSleepTime > std::chrono::milliseconds(0)) {
+            std::this_thread::sleep_for(remainingSleepTime);
+            {
+                std::lock_guard<std::mutex> consoleLock(consoleMutex);
+                std::cout << "[OccupancyMapPipeline] Processing Time: " 
+                          << std::chrono::duration_cast<std::chrono::milliseconds>(elapsedTime).count() << " ms\n";
+            }
+        } else {
+            std::lock_guard<std::mutex> consoleLock(consoleMutex);
+            std::cout << "Warning: [OccupancyMapPipeline] Processing took longer than 100 ms. Time: " 
+                      << std::chrono::duration_cast<std::chrono::milliseconds>(elapsedTime).count()
+                      << " ms. Skipping sleep.\n";
+        }
+    }
+}
+
+// -----------------------------------------------------------------------------
+// Section: runOccupancyMapViewer
+// -----------------------------------------------------------------------------
+
+void vizPointsUtils::runOccupancyMapViewer(uint32_t& frameID,
+                                           Eigen::Vector3f& position,
+                                           Eigen::Vector3f& orientation,
+                                           std::vector<Eigen::Vector3f>& staticVoxels, 
+                                           std::vector<Eigen::Vector3i>& occupancyColors, 
+                                           std::vector<Eigen::Vector3i>& reflectivityColors,
+                                           std::vector<Eigen::Vector3i>& intensityColors, 
+                                           std::vector<Eigen::Vector3i>& NIRColors,
+                                           const std::vector<int>& allowedCores,
+                                           std::atomic<bool>& running,
+                                           std::mutex& consoleMutex,
+                                           std::mutex& pointsMutex,
+                                           std::mutex& attributesMutex) {
+    setThreadAffinity(allowedCores, consoleMutex);
+
+    const auto targetCycleDuration = std::chrono::milliseconds(100); // 10 Hz target
+
+    TopDownViewer viewer;
+    open3d::visualization::Visualizer vis;
+    vis.CreateVisualizerWindow("Top-Down View", 800, 800);
+    vizPointsUtils::SetupTopDownView(vis, -8.0);
+
+    while (running) {
+        auto cycleStartTime = std::chrono::steady_clock::now();
+
+        {
+            std::scoped_lock lock(pointsMutex, attributesMutex, consoleMutex);
+
+            // Validate that all data vectors have the same size
+            if (staticVoxels.size() == occupancyColors.size() &&
+                staticVoxels.size() == reflectivityColors.size() &&
+                staticVoxels.size() == intensityColors.size() &&
+                staticVoxels.size() == NIRColors.size()) {
+
+                vis.ClearGeometries();
+
+                // Create voxel squares and vehicle mesh
+                auto static_squares = viewer.CreateVoxelSquares(staticVoxels, position, occupancyColors, mapConfig.resolution);
+
+                // Use orientation.z() for yaw
+                auto vehicle_mesh = viewer.CreateVehicleMesh(2.5f, orientation.z());
+
+                vis.AddGeometry(static_squares);
+                vis.AddGeometry(vehicle_mesh);
+
+                std::cout << "[OccupancyMapViewer] Function running okay. Frame ID: " << frameID << "\n";
+
+                if (!vis.PollEvents()) {  // Exit if user closes the window
+                    running = false;
+                }
+                vis.UpdateRender();
+            } else {
+                std::cerr << "[OccupancyMapViewer] Error: Data vectors have inconsistent sizes.\n";
             }
         }
 
@@ -344,13 +580,21 @@ void vizPointsUtils::pointToWorkWith(CallbackPoints::Points& points, CallbackPoi
 
         if (remainingSleepTime > std::chrono::milliseconds(0)) {
             std::this_thread::sleep_for(remainingSleepTime);
-            std::cout << "Processing Time: " 
-                      << std::chrono::duration_cast<std::chrono::milliseconds>(elapsedTime).count()<< "\n";;
+            {
+                std::lock_guard<std::mutex> consoleLock(consoleMutex);
+                std::cout << "[OccupancyMapViewer] Processing Time: " 
+                          << std::chrono::duration_cast<std::chrono::milliseconds>(elapsedTime).count() << " ms\n";
+            }
         } else {
-            std::lock_guard<std::mutex> lock(consoleMutex);
-            std::cout << "Warning: Processing took longer than 100 ms. Time: " 
+            std::lock_guard<std::mutex> consoleLock(consoleMutex);
+            std::cout << "Warning: [OccupancyMapViewer] Processing took longer than 100 ms. Time: " 
                       << std::chrono::duration_cast<std::chrono::milliseconds>(elapsedTime).count()
                       << " ms. Skipping sleep.\n";
         }
     }
+
+    // Destroy the visualizer window after exiting the loop
+    vis.DestroyVisualizerWindow();
 }
+
+

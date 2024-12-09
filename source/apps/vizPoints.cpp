@@ -50,10 +50,6 @@ int main() {
     CallbackPoints::Points points_, attributes_;
     CallbackPoints callbackPoints_, callbackAttributes_;
 
-    // Synchronization primitives
-    std::condition_variable pointsDataReadyCV, attributesDataReadyCV;
-    std::atomic<bool> pointDataAvailable(false), attributesDataAvailable(false);
-
     try {
         std::vector<std::thread> threads;
 
@@ -74,10 +70,12 @@ int main() {
                     1393, 
                     std::vector<int>{8}, 
                     callbackPoints_, 
-                    points_, 
-                    vizPointsUtils::pointsMutex,  // Access static mutex
-                    pointsDataReadyCV, 
-                    pointDataAvailable
+                    points_,
+                    vizPointsUtils::consoleMutex, 
+                    vizPointsUtils::pointsMutex,  
+                    vizPointsUtils::pointsDataReadyCV, 
+                    vizPointsUtils::pointsDataAvailable,
+                    vizPointsUtils::running
                 );
             }
         );
@@ -93,17 +91,50 @@ int main() {
                     1393, 
                     std::vector<int>{9}, 
                     callbackAttributes_, 
-                    attributes_, 
+                    attributes_,
+                    vizPointsUtils::consoleMutex, 
                     vizPointsUtils::attributesMutex,  // Access static mutex
-                    attributesDataReadyCV, 
-                    attributesDataAvailable
+                    vizPointsUtils::attributesDataReadyCV, 
+                    vizPointsUtils::attributesDataAvailable,
+                    vizPointsUtils::running
                 );
             }
         );
 
         // Start Processing (10 Hz)
         threads.emplace_back([&]() {
-            vizPointsUtils::pointToWorkWith(points_, attributes_, std::vector<int>{0, 1, 2, 3});
+            vizPointsUtils::runOccupancyMapPipeline(points_, 
+                                                    attributes_,
+                                                    vizPointsUtils::frameID,
+                                                    vizPointsUtils::position,
+                                                    vizPointsUtils::orientation,
+                                                    vizPointsUtils::receivedStaticVoxels,
+                                                    vizPointsUtils::receivedOccupancyColors,
+                                                    vizPointsUtils::receivedReflectivityColors,
+                                                    vizPointsUtils::receivedIntensityColors,
+                                                    vizPointsUtils::receivedNIRColors,
+                                                    std::vector<int>{0, 1, 2, 3},
+                                                    vizPointsUtils::running,
+                                                    vizPointsUtils::consoleMutex,
+                                                    vizPointsUtils::pointsMutex,
+                                                    vizPointsUtils::attributesMutex);
+        });
+
+        // Start Processing (10 Hz)
+        threads.emplace_back([&]() {
+            vizPointsUtils::runOccupancyMapViewer(vizPointsUtils::frameID, 
+                                                    vizPointsUtils::position,
+                                                    vizPointsUtils::orientation,
+                                                    vizPointsUtils::receivedStaticVoxels,
+                                                    vizPointsUtils::receivedOccupancyColors,
+                                                    vizPointsUtils::receivedReflectivityColors,
+                                                    vizPointsUtils::receivedIntensityColors,
+                                                    vizPointsUtils::receivedNIRColors,
+                                                    std::vector<int>{4, 5, 6, 7},
+                                                    vizPointsUtils::running,
+                                                    vizPointsUtils::consoleMutex,
+                                                    vizPointsUtils::pointsMutex,
+                                                    vizPointsUtils::attributesMutex);
         });
 
         // Monitor signal and clean up

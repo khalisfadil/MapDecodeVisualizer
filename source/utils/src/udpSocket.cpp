@@ -1,17 +1,30 @@
+// MIT License
+
+// Copyright (c) 2024 Muhammad Khalis bin Mohd Fadil
+
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+
+// The above copyright notice and this permission notice shall be included in all
+// copies or substantial portions of the Software.
+
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+// SOFTWARE.
 #include "udpSocket.hpp"
 
-/**
- * @brief Constructor to initialize the UDP socket.
- * 
- * Sets up the UDP socket with the provided host and port, initializes the receive buffer,
- * and starts listening for incoming packets.
- * 
- * @param context Reference to the Boost.Asio IO context.
- * @param host The host address to bind the socket to (e.g., "127.0.0.1").
- * @param port The port number to bind the socket to.
- * @param callback A user-defined callback function to handle received data.
- * @param bufferSize The size of the buffer for incoming packets (default is 65535).
- */
+// -----------------------------------------------------------------------------
+// Section: UDPSocket
+// -----------------------------------------------------------------------------
+
 UDPSocket::UDPSocket(boost::asio::io_context& context, 
                      const std::string& host, 
                      uint16_t port, 
@@ -23,21 +36,19 @@ UDPSocket::UDPSocket(boost::asio::io_context& context,
     startReceive();                     // Start listening for incoming packets
 }
 
-/**
- * @brief Destructor to ensure socket cleanup.
- * 
- * Calls the stop method to close the socket and cancel any ongoing operations.
- */
+
+// -----------------------------------------------------------------------------
+// Section: UDPSocket
+// -----------------------------------------------------------------------------
+
 UDPSocket::~UDPSocket() {
     stop();
 }
 
-/**
- * @brief Starts the asynchronous receive operation.
- * 
- * This method sets up an asynchronous receive loop to handle incoming UDP packets.
- * Incoming data is passed to the user-defined callback function.
- */
+// -----------------------------------------------------------------------------
+// Section: startReceive
+// -----------------------------------------------------------------------------
+
 void UDPSocket::startReceive() {
     socket_.async_receive_from(
         boost::asio::buffer(buffer_),    // Buffer for receiving data
@@ -72,12 +83,10 @@ void UDPSocket::startReceive() {
     );
 }
 
-/**
- * @brief Stops the UDP socket.
- * 
- * Closes the socket and cancels any ongoing operations. Logs an error message if the
- * socket fails to close cleanly.
- */
+// -----------------------------------------------------------------------------
+// Section: stop
+// -----------------------------------------------------------------------------
+
 void UDPSocket::stop() {
     boost::system::error_code ec;
     socket_.close(ec); // Close the socket

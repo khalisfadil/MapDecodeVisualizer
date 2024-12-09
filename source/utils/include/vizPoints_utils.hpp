@@ -29,6 +29,8 @@
 #include "callbackPoints.hpp"
 #include "vizPoints_utils.hpp"
 
+#include "top_down_viewer.hpp"
+
 #include <boost/asio.hpp>
 #include <mutex>
 #include <thread>
@@ -86,6 +88,115 @@ class vizPointsUtils {
 
         // -----------------------------------------------------------------------------
         /**
+         * @brief Stores the voxel centers of the static map.
+         *
+         * This vector contains the 3D positions of voxel centers that represent the static map.
+         * It is updated in real-time and shared across threads for visualization or further processing.
+         */
+        static std::vector<Eigen::Vector3f> receivedStaticVoxels;
+
+        // -----------------------------------------------------------------------------
+        /**
+         * @brief Stores colors corresponding to voxel occupancy states.
+         *
+         * Each element represents the RGB color encoding of a voxel's occupancy state.
+         * It is used for rendering the occupancy map in visualization pipelines.
+         */
+        static std::vector<Eigen::Vector3i> receivedOccupancyColors;
+
+        // -----------------------------------------------------------------------------
+        /**
+         * @brief Stores colors corresponding to voxel reflectivity values.
+         *
+         * This vector contains the RGB color encoding of reflectivity values for each voxel.
+         * Reflectivity values are typically derived from sensor data and used in visualization.
+         */
+        static std::vector<Eigen::Vector3i> receivedReflectivityColors;
+
+        // -----------------------------------------------------------------------------
+        /**
+         * @brief Stores colors corresponding to voxel intensity values.
+         *
+         * Each element represents the RGB color encoding of intensity values for each voxel.
+         * Intensity values are typically derived from sensor readings and visualized to indicate
+         * the strength of the sensor return signal.
+         */
+        static std::vector<Eigen::Vector3i> receivedIntensityColors;
+
+        // -----------------------------------------------------------------------------
+        /**
+         * @brief Stores colors corresponding to voxel Near-Infrared (NIR) values.
+         *
+         * This vector contains the RGB color encoding of NIR data for each voxel. NIR values
+         * are often used in specialized visualization tasks or applications requiring spectral data.
+         */
+        static std::vector<Eigen::Vector3i> receivedNIRColors;
+
+        // -----------------------------------------------------------------------------
+        /**
+         * @brief Condition variable to signal availability of new point data.
+         *
+         * This condition variable is used to notify waiting threads when new point cloud data
+         * is available for processing.
+         */
+        static std::condition_variable pointsDataReadyCV;
+        
+        // -----------------------------------------------------------------------------
+        /**
+         * @brief Condition variable to signal availability of new attribute data.
+         *
+         * This condition variable is used to notify waiting threads when new point attribute data
+         * (e.g., intensity, reflectivity, NIR) is available for processing.
+         */
+        static std::condition_variable attributesDataReadyCV;
+        
+        // -----------------------------------------------------------------------------
+        /**
+         * @brief Flag indicating whether new point cloud data is available.
+         *
+         * This atomic flag is set to true when new point cloud data is ready for processing,
+         * and false when data has been consumed.
+         */
+        static std::atomic<bool> pointsDataAvailable;
+        
+        // -----------------------------------------------------------------------------
+        /**
+         * @brief Flag indicating whether new attribute data is available.
+         *
+         * This atomic flag is set to true when new point attribute data (e.g., intensity, reflectivity, NIR)
+         * is ready for processing, and false when data has been consumed.
+         */
+        static std::atomic<bool> attributesDataAvailable;
+
+        // -----------------------------------------------------------------------------
+        /**
+         * @brief Stores the current frame ID.
+         *
+         * This variable tracks the frame ID of the latest data being processed. It is used
+         * for synchronization and to ensure consistency across point cloud and attribute data.
+         */
+        static uint32_t frameID;
+        
+        // -----------------------------------------------------------------------------
+        /**
+         * @brief Stores the current position of the vehicle or reference point.
+         *
+         * This vector represents the 3D position (X, Y, Z) of the vehicle or a reference point
+         * in the global frame. It is updated in real-time as new data is received.
+         */
+        static Eigen::Vector3f position;
+        
+        // -----------------------------------------------------------------------------
+        /**
+         * @brief Stores the current orientation of the vehicle.
+         *
+         * This vector represents the roll, pitch, and yaw (RPY) orientation of the vehicle
+         * in radians. It is updated in real-time as new data is received.
+         */
+        static Eigen::Vector3f orientation;
+
+        // -----------------------------------------------------------------------------
+        /**
          * @brief Mutex for synchronizing console output.
          *
          * @detail This mutex ensures that console output is accessed and modified in a thread-safe 
@@ -119,15 +230,6 @@ class vizPointsUtils {
          * to avoid conflicts and ensure consistent updates to the attributes object.
          */
         static std::mutex attributesMutex;
-
-        // -----------------------------------------------------------------------------
-        /**
-         * @brief Mutex for protecting access to the occupancy map.
-         *
-         * @detail This mutex is used to protect access to the occupancy map, ensuring thread-safety 
-         * when manipulating the map data structure.
-         */
-        static std::mutex occupancyMapMutex;
 
         // -----------------------------------------------------------------------------
         /**
@@ -172,11 +274,18 @@ class vizPointsUtils {
          * @param dataReadyCV Condition variable for notifying data updates.
          * @param dataAvailable Atomic flag to indicate data readiness.
          */
-        static void startListener(boost::asio::io_context& ioContext, const std::string& host, uint16_t port,
-                                    uint32_t bufferSize, const std::vector<int>& allowedCores,
-                                    CallbackPoints& callbackProcessor, CallbackPoints::Points& latestPoints,
-                                    std::mutex& dataMutex, std::condition_variable& dataReadyCV, 
-                                    std::atomic<bool>& dataAvailable);
+        static void startListener(boost::asio::io_context& ioContext, 
+                                    const std::string& host, 
+                                    uint16_t port,
+                                    uint32_t bufferSize, 
+                                    const std::vector<int>& allowedCores,
+                                    CallbackPoints& callbackProcessor, 
+                                    CallbackPoints::Points& latestPoints,
+                                    std::mutex& consoleMutex,
+                                    std::mutex& dataMutex, 
+                                    std::condition_variable& dataReadyCV, 
+                                    std::atomic<bool>& dataAvailable,
+                                    std::atomic<bool>& running);
         
         // -----------------------------------------------------------------------------
         /**
@@ -189,7 +298,7 @@ class vizPointsUtils {
          *
          * @param coreIDs A vector of integers specifying the core IDs for thread affinity.
          */
-        static void setThreadAffinity(const std::vector<int>& coreIDs);
+        static void setThreadAffinity(const std::vector<int>& coreIDs,std::mutex& consoleMutex);
 
         // -----------------------------------------------------------------------------
         /**
@@ -206,21 +315,105 @@ class vizPointsUtils {
 
         // -----------------------------------------------------------------------------
         /**
-         * @brief Processes points and attributes, with thread affinity and cycle timing.
+        * @brief Runs the occupancy map pipeline for real-time processing and updates of voxel data.
+        *
+        * This function processes incoming point cloud data and attributes in a real-time loop. It computes
+        * occupancy map data, updates static voxel information, and extracts color attributes (occupancy, reflectivity,
+        * intensity, and NIR) for visualization or further processing. The function operates at a target
+        * frame rate of 10 Hz and utilizes mutexes for thread-safe data access.
+        *
+        * @param points Reference to the CallbackPoints object containing point cloud data.
+        * @param attributes Reference to the CallbackPoints object containing attribute data (intensity, reflectivity, NIR).
+        * @param frameID Reference to the current frame ID being processed.
+        * @param position Reference to the current position of the vehicle (updated in the loop).
+        * @param orientation Reference to the current orientation of the vehicle (updated in the loop).
+        * @param staticVoxels Reference to the vector containing voxel centers for the static map.
+        * @param occupancyColors Reference to the vector containing colors representing voxel occupancy states.
+        * @param reflectivityColors Reference to the vector containing colors representing voxel reflectivity values.
+        * @param intensityColors Reference to the vector containing colors representing voxel intensity values.
+        * @param NIRColors Reference to the vector containing colors representing voxel NIR values.
+        * @param allowedCores Vector of CPU core IDs that the processing thread is allowed to use.
+        * @param running Atomic flag indicating whether the pipeline should continue running (set to false to exit).
+        * @param consoleMutex Mutex for synchronizing console output.
+        * @param pointsMutex Mutex for synchronizing access to point data.
+        * @param attributesMutex Mutex for synchronizing access to attribute data.
+        *
+        * @note The function assumes that the number of points in the `points` and `attributes` objects match,
+        *       and their respective frame IDs are synchronized. If the data is inconsistent, the function
+        *       skips processing for the current cycle.
+        *
+        * @note The function targets a fixed processing rate of 10 Hz. If processing exceeds this duration,
+        *       a warning is logged, and the function continues without delay.
+        *
+        * @return void
+        *
+        * @throws std::runtime_error If `occupancyMapInstance` methods encounter errors (implementation-dependent).
+        */
+        static void runOccupancyMapPipeline(CallbackPoints::Points& points, CallbackPoints::Points& attributes,
+                                             uint32_t& frameID,
+                                             Eigen::Vector3f& position,
+                                             Eigen::Vector3f& orientation, 
+                                             std::vector<Eigen::Vector3f>& staticVoxels, 
+                                             std::vector<Eigen::Vector3i>& occupancyColors, 
+                                             std::vector<Eigen::Vector3i>& reflectivityColors,
+                                             std::vector<Eigen::Vector3i>& intensityColors, 
+                                             std::vector<Eigen::Vector3i>& NIRColors,
+                                             const std::vector<int>& allowedCores,
+                                             std::atomic<bool>& running,
+                                             std::mutex& consoleMutex,
+                                             std::mutex& pointsMutex,
+                                             std::mutex& attributesMutex);
+
+        // -----------------------------------------------------------------------------
+        /**
+         * @brief Runs the occupancy map viewer for real-time visualization of voxel data and vehicle position.
          *
-         * @detail This function runs a processing loop that operates at a target frequency of 10 Hz 
-         * (100 ms cycle). It checks the consistency between points and attributes data and performs 
-         * processing by extracting point cloud data and attributes (intensity, reflectivity, NIR). 
-         * The data is passed to an occupancy map pipeline. The function also ensures the thread is 
-         * restricted to specified CPU cores and logs cycle timing performance. It adjusts the sleep 
-         * duration to maintain the target cycle time and provides warnings if processing exceeds the time limit.
+         * This function creates a visualization window using Open3D and updates it at a fixed rate (10 Hz)
+         * with the latest occupancy map data and vehicle position. The map is rendered as a collection of 
+         * voxel squares, and the vehicle is represented as a triangular mesh. The function also handles
+         * user interaction, allowing the application to terminate gracefully when the visualization window
+         * is closed.
          *
-         * @param points The points data structure containing the 3D points and associated metadata.
-         * @param attributes The attributes data structure containing additional information (e.g., intensity, reflectivity).
-         * @param allowedCores A vector of allowed CPU core IDs for thread affinity.
+         * @param frameID The current frame ID of the occupancy map data (updated during visualization).
+         * @param position The vehicle's current position in the global frame (updated during visualization).
+         * @param orientation The vehicle's current orientation (yaw is used for the visualization).
+         * @param staticVoxels A vector of voxel centers representing the static map.
+         * @param occupancyColors A vector of colors corresponding to the occupancy state of each voxel.
+         * @param reflectivityColors A vector of colors corresponding to the reflectivity of each voxel.
+         * @param intensityColors A vector of colors corresponding to the intensity values of each voxel.
+         * @param NIRColors A vector of colors corresponding to the NIR values of each voxel.
+         * @param allowedCores A vector of CPU core IDs that the thread is allowed to run on.
+         * @param running An atomic flag to indicate whether the viewer is running (set to false to exit).
+         * @param consoleMutex A mutex for thread-safe console logging.
+         * @param pointsMutex A mutex for synchronizing access to point data.
+         * @param attributesMutex A mutex for synchronizing access to attribute data.
+         *
+         * @note The function assumes all input vectors (`staticVoxels`, `occupancyColors`, `reflectivityColors`, 
+         *       `intensityColors`, and `NIRColors`) have the same size. If not, the function will log an error 
+         *       and skip the current update.
+         *
+         * @throws std::runtime_error If the Open3D visualizer fails to initialize.
+         *
+         * @return void
          */
-        static void pointToWorkWith(CallbackPoints::Points& points, CallbackPoints::Points& attributes,
-                                    const std::vector<int>& allowedCores);
+        static void runOccupancyMapViewer(uint32_t& frameID,
+                                             Eigen::Vector3f& position,
+                                             Eigen::Vector3f& orientation,
+                                             std::vector<Eigen::Vector3f>& staticVoxels, 
+                                             std::vector<Eigen::Vector3i>& occupancyColors, 
+                                             std::vector<Eigen::Vector3i>& reflectivityColors,
+                                             std::vector<Eigen::Vector3i>& intensityColors, 
+                                             std::vector<Eigen::Vector3i>& NIRColors,
+                                             const std::vector<int>& allowedCores,
+                                             std::atomic<bool>& running,
+                                             std::mutex& consoleMutex,
+                                             std::mutex& pointsMutex,
+                                             std::mutex& attributesMutex);
+
+        // -----------------------------------------------------------------------------
+
+        static void SetupTopDownView(open3d::visualization::Visualizer& vis, double cameraHeight);
+
 
     // -----------------------------------------------------------------------------
     // Section: private Class vizPointsUtils

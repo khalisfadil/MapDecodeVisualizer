@@ -1,11 +1,35 @@
+// MIT License
+
+// Copyright (c) 2024 Muhammad Khalis bin Mohd Fadil
+
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+
+// The above copyright notice and this permission notice shall be included in all
+// copies or substantial portions of the Software.
+
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+// SOFTWARE.
 #include "top_down_viewer.hpp"
 
-// #####################################################
+// -----------------------------------------------------------------------------
+// Section: CreateVoxelSquares
+// -----------------------------------------------------------------------------
 
-std::shared_ptr<open3d::geometry::TriangleMesh> TopDownViewer::CreateVoxelSquares(const std::vector<Eigen::Vector3f>& points,
-                                                                                  const Eigen::Vector3f& vehicle_position,
-                                                                                  const std::vector<Eigen::Matrix<uint32_t, 3, 1>>& grayscale_values,
-                                                                                  float mapRes)
+std::shared_ptr<open3d::geometry::TriangleMesh> TopDownViewer::CreateVoxelSquares(
+    const std::vector<Eigen::Vector3f>& points,
+    const Eigen::Vector3f& vehicle_position,
+    const std::vector<Eigen::Vector3i>& grayscale_values,
+    float mapRes) 
 {
     if (points.size() != grayscale_values.size()) {
         throw std::invalid_argument("Points and grayscale_values must have the same size.");
@@ -14,7 +38,7 @@ std::shared_ptr<open3d::geometry::TriangleMesh> TopDownViewer::CreateVoxelSquare
     // Data structure to hold the brightest voxel for each unique XY key
     struct VoxelInfo {
         Eigen::Vector3i gridIndex; // Voxel grid index
-        uint32_t grayscale;           // Grayscale value
+        int grayscale;             // Grayscale value
     };
 
     // Function to generate a unique key for XY indices
@@ -54,8 +78,9 @@ std::shared_ptr<open3d::geometry::TriangleMesh> TopDownViewer::CreateVoxelSquare
 
                 // Update the local map
                 auto it = local_map.find(key);
-                if (it == local_map.end() || grayscale_values[i](0, 0) > it->second.grayscale) {
-                    local_map[key] = VoxelInfo{gridIndex, grayscale_values[i](0, 0)};
+                int grayscale_value = grayscale_values[i].x(); // Access grayscale value
+                if (it == local_map.end() || grayscale_value > it->second.grayscale) {
+                    local_map[key] = VoxelInfo{gridIndex, grayscale_value};
                 }
             }
             return local_map;
@@ -84,8 +109,8 @@ std::shared_ptr<open3d::geometry::TriangleMesh> TopDownViewer::CreateVoxelSquare
             {voxelPos.x() - half_size, voxelPos.y() + half_size, 0.0}  // Top-left
         };
 
-        // Assign color
-        Eigen::Vector3d color = Eigen::Vector3d::Constant(voxel_info.grayscale);
+        // Assign color (normalize grayscale to [0, 1])
+        Eigen::Vector3d color = Eigen::Vector3d::Constant(voxel_info.grayscale / 255.0);
 
         // Add vertices
         uint64_t base_index = voxel_mesh->vertices_.size();
@@ -100,9 +125,14 @@ std::shared_ptr<open3d::geometry::TriangleMesh> TopDownViewer::CreateVoxelSquare
     return voxel_mesh;
 }
 
-// #####################################################
+// -----------------------------------------------------------------------------
+// Section: CreateVehicleMesh
+// -----------------------------------------------------------------------------
 
-std::shared_ptr<open3d::geometry::TriangleMesh> TopDownViewer::CreateVehicleMesh(float markersize , double yaw_rad){
+std::shared_ptr<open3d::geometry::TriangleMesh> TopDownViewer::CreateVehicleMesh(float markersize, double yaw_rad) {
+    if (markersize <= 0) {
+        throw std::invalid_argument("Marker size must be positive.");
+    }
 
     // Define vertices of the triangle (relative to the vehicle's local frame)
     Eigen::Vector3d front_vertex(0.0, markersize / 2.0, 0.0);  // Forward
@@ -112,8 +142,8 @@ std::shared_ptr<open3d::geometry::TriangleMesh> TopDownViewer::CreateVehicleMesh
     // Create rotation matrix for yaw
     Eigen::Matrix3d rotation_matrix;
     rotation_matrix << std::cos(yaw_rad), -std::sin(yaw_rad), 0.0,
-                        std::sin(yaw_rad),  std::cos(yaw_rad), 0.0,
-                        0.0,                0.0,               1.0;
+                       std::sin(yaw_rad),  std::cos(yaw_rad), 0.0,
+                       0.0,                0.0,               1.0;
 
     // Rotate vertices based on yaw
     front_vertex = rotation_matrix * front_vertex;
@@ -129,7 +159,7 @@ std::shared_ptr<open3d::geometry::TriangleMesh> TopDownViewer::CreateVehicleMesh
     };
     vehicle_mesh->triangles_ = {{0, 1, 2}}; // Single triangle
 
-    // Assign a uniform color to the vehicle
+    // Assign a uniform green color to the vehicle
     vehicle_mesh->vertex_colors_ = {
         {0.0, 1.0, 0.0}, // green color
         {0.0, 1.0, 0.0},
