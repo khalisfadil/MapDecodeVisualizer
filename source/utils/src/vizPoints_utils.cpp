@@ -208,12 +208,12 @@ void vizPointsUtils::startListener(boost::asio::io_context& ioContext, const std
     try {
         // Initialize the UDP socket
         UDPSocket listener(ioContext, host, port, [&](const std::vector<uint8_t>& data) {
-            {
-                std::lock_guard<std::mutex> lock(consoleMutex);
-                auto now = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
-                std::cout << "[" << std::put_time(std::localtime(&now), "%F %T")
-                          << "] Received packet of size: " << data.size() << " bytes on port: " << port << std::endl;
-            }
+            // {
+            //     std::lock_guard<std::mutex> lock(consoleMutex);
+            //     auto now = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
+            //     std::cout << "[" << std::put_time(std::localtime(&now), "%F %T")
+            //               << "] Received packet of size: " << data.size() << " bytes on port: " << port << std::endl;
+            // }
 
             {
                 // Protect dataAvailable with dataMutex
@@ -223,12 +223,12 @@ void vizPointsUtils::startListener(boost::asio::io_context& ioContext, const std
             }
             dataReadyCV.notify_one(); // Notify the processing thread
 
-            // DEBUG output for verification (logging)
-            {
-                std::lock_guard<std::mutex> lock(consoleMutex); // Protect logging
-                std::cout << "Updated Frame ID: " << latestPoints.frameID 
-                        << ", Number of Points: " << latestPoints.numVal << std::endl;
-            }
+            // // DEBUG output for verification (logging)
+            // {
+            //     std::lock_guard<std::mutex> lock(consoleMutex); // Protect logging
+            //     std::cout << "Updated Frame ID: " << latestPoints.frameID 
+            //             << ", Number of Points: " << latestPoints.numVal << std::endl;
+            // }
 
         }, bufferSize);
 
