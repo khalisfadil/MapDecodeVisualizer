@@ -101,10 +101,10 @@ int main() {
             }
         );
 
-        // Start Processing (10 Hz)
-        threads.emplace_back([&]() {
-            vizPointsUtils::pointToWorkWith(points_, attributes_, std::vector<int>{0, 1, 2, 3});
-        });
+        // // Start Processing (10 Hz)
+        // threads.emplace_back([&]() {
+        //     vizPointsUtils::pointToWorkWith(points_, attributes_, std::vector<int>{0, 1, 2, 3});
+        // });
 
         // Monitor signal and clean up
         while (vizPointsUtils::running) {

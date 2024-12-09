@@ -223,11 +223,11 @@ void vizPointsUtils::startListener(boost::asio::io_context& ioContext, const std
             dataReadyCV.notify_one(); // Notify the processing thread
 
             // DEBUG output for verification (logging)
-            {
-                std::lock_guard<std::mutex> lock(consoleMutex); // Protect logging
-                std::cout << "Updated Frame ID: " << latestPoints.frameID 
-                        << ", Number of Points: " << latestPoints.numVal << std::endl;
-            }
+            // {
+            //     std::lock_guard<std::mutex> lock(consoleMutex); // Protect logging
+            //     std::cout << "Updated Frame ID: " << latestPoints.frameID 
+            //             << ", Number of Points: " << latestPoints.numVal << std::endl;
+            // }
 
         }, bufferSize);
 
