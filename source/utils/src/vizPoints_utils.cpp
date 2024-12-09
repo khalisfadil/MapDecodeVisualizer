@@ -22,13 +22,99 @@
 #include "vizPoints_utils.hpp"
 
 // -----------------------------------------------------------------------------
+// Section: declaration
+// -----------------------------------------------------------------------------
+
+/**
+ * @brief Mutex for synchronizing console output operations.
+ * 
+ * @details Ensures thread-safe access to shared console output to avoid race 
+ * conditions or interleaving of log messages from multiple threads.
+ */
+std::mutex vizPointsUtils::consoleMutex;
+
+// -----------------------------------------------------------------------------
+/**
+ * @brief Mutex for synchronizing access to 3D point data.
+ * 
+ * @details Protects the shared buffer of 3D points to ensure thread-safe 
+ * read/write operations across multiple threads during processing.
+ */
+std::mutex vizPointsUtils::pointsMutex;
+
+// -----------------------------------------------------------------------------
+/**
+ * @brief Mutex for synchronizing access to attribute data.
+ * 
+ * @details Ensures thread-safe access to shared attribute data, preventing 
+ * data races during concurrent updates and retrieval.
+ */
+std::mutex vizPointsUtils::attributesMutex;
+
+// -----------------------------------------------------------------------------
+/**
+ * @brief Mutex for synchronizing access to the occupancy map.
+ * 
+ * @details Protects the shared occupancy map data structure, ensuring 
+ * consistency and thread-safety during concurrent access and updates.
+ */
+std::mutex vizPointsUtils::occupancyMapMutex;
+
+// -----------------------------------------------------------------------------
+/**
+ * @brief Condition variable for managing the processing queue.
+ * 
+ * @details Used to signal and synchronize threads waiting on events related 
+ * to the processing queue, such as new data availability.
+ */
+std::condition_variable vizPointsUtils::queueCV;
+
+// -----------------------------------------------------------------------------
+/**
+ * @brief Shared instance of the OccupancyMap object.
+ * 
+ * @details A static unique pointer that holds a shared instance of the 
+ * `OccupancyMap` class. Ensures there is a single shared instance across 
+ * the application for managing occupancy map data.
+ */
+std::unique_ptr<OccupancyMap> vizPointsUtils::occupancyMapInstance = nullptr;
+
+// -----------------------------------------------------------------------------
+/**
+ * @brief Shared instance of the ClusterExtractor object.
+ * 
+ * @details A static unique pointer that holds a shared instance of the 
+ * `ClusterExtractor` class. Provides consistent and efficient access to 
+ * clustering functionality across the application.
+ */
+std::unique_ptr<ClusterExtractor> vizPointsUtils::clusterExtractorInstance = nullptr;
+
+// -----------------------------------------------------------------------------
+/**
+ * @brief Configuration parameters for the occupancy map.
+ * 
+ * @details Stores the resolution, reaching distance, and center position 
+ * parameters for initializing and configuring the `OccupancyMap` instance.
+ */
+MapConfig mapConfig;
+
+// -----------------------------------------------------------------------------
+/**
+ * @brief Configuration parameters for the cluster extractor.
+ * 
+ * @details Holds parameters such as tolerance, size thresholds, dynamic score 
+ * thresholds, and similarity thresholds used to configure the `ClusterExtractor`.
+ */
+ClusterConfig clusterConfig;
+
+
+// -----------------------------------------------------------------------------
 // Section: initialize
 // -----------------------------------------------------------------------------
 
 void vizPointsUtils::initialize() {
 
-    MapConfig mapConfig;
-    ClusterConfig clusterConfig;
+    
     // Initialize the occupancyMapInstance if it hasn't been initialized
     if (!occupancyMapInstance) {
         occupancyMapInstance = std::make_unique<OccupancyMap>(
@@ -45,6 +131,7 @@ void vizPointsUtils::initialize() {
             clusterConfig.similarityThreshold, clusterConfig.maxDistanceThreshold, clusterConfig.dt
         );
     }
+    
 }
 
 // -----------------------------------------------------------------------------
@@ -117,21 +204,20 @@ void vizPointsUtils::startListener(boost::asio::io_context& ioContext, const std
                           << "] Received packet of size: " << data.size() << " bytes on port: " << port << std::endl;
             }
 
-            {   
-                // Process the packet
+            {
+                // Protect dataAvailable with dataMutex
                 std::lock_guard<std::mutex> lock(dataMutex);
-                callbackProcessor.process(data, latestPoints);
-
-                {
-                    std::lock_guard<std::mutex> cvLock(consoleMutex); // Ensure thread-safety
-                    dataAvailable = true;
-                }
-                dataReadyCV.notify_one(); // Notify the processing thread
-
-                // Debug output for verification
-                std::cout << "Updated Frame ID: " << latestPoints.frameID 
-                          << ", Number of Points: " << latestPoints.numVal << std::endl;
+                dataAvailable = true;
             }
+            dataReadyCV.notify_one(); // Notify the processing thread
+
+            // DEBUG output for verification (logging)
+            {
+                std::lock_guard<std::mutex> lock(consoleMutex); // Protect logging
+                std::cout << "Updated Frame ID: " << latestPoints.frameID 
+                        << ", Number of Points: " << latestPoints.numVal << std::endl;
+            }
+
         }, bufferSize);
 
         {
@@ -176,7 +262,7 @@ void vizPointsUtils::startListener(boost::asio::io_context& ioContext, const std
 }
 
 // -----------------------------------------------------------------------------
-// Section: startListener
+// Section: signalHandler
 // -----------------------------------------------------------------------------
 
 void vizPointsUtils::signalHandler(int signal) {

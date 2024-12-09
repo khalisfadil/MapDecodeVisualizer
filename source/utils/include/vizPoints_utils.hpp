@@ -222,10 +222,10 @@ class vizPointsUtils {
         static void pointToWorkWith(CallbackPoints::Points& points, CallbackPoints::Points& attributes,
                                     const std::vector<int>& allowedCores);
 
-
     // -----------------------------------------------------------------------------
     // Section: private Class vizPointsUtils
     // -----------------------------------------------------------------------------
     private:
+        
 
 };

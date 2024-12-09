@@ -1,23 +1,17 @@
 #include "callbackPoints.hpp"
 
-/**
- * @brief Constructs the CallbackDynamicVoxel object.
- * Initializes the receivedXYZ_ buffer with NaN values to mark unused slots.
- */
+// -----------------------------------------------------------------------------
+// Section: CallbackPoints
+// -----------------------------------------------------------------------------
+
 CallbackPoints::CallbackPoints()
     : receivedXYZ_(MAX_NUM_POINT, Eigen::Vector3f::Constant(std::numeric_limits<float>::quiet_NaN())) 
 {}
 
-/**
- * @brief Processes incoming data packets and updates the staticVoxel object.
- * 
- * @param data The raw binary data packet.
- * @param voxel Reference to the staticVoxel structure to populate with processed data.
- * 
- * The method validates the data packet format, extracts metadata (timestamp, position, orientation),
- * and appends 3D points to the buffer. If a new frame is detected, it resets internal states
- * and finalizes the previous frame.
- */
+// -----------------------------------------------------------------------------
+// Section: process
+// -----------------------------------------------------------------------------
+
 void CallbackPoints::process(const std::vector<uint8_t>& data, Points& points) {
     // Check if the input data is valid
     if (data.empty()) return;
