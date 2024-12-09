@@ -488,7 +488,8 @@ void vizPointsUtils::runOccupancyMapPipeline(CallbackPoints::Points& points, Cal
                 orientation = points.RPY.cast<float>();
                 // }
 
-                std::cout << "[OccupancyMapPipeline] Function running okay. Frame ID: " << frameID << "\n";
+                // std::cout << "[OccupancyMapPipeline] Function running okay. Frame ID: " << frameID << "\n";
+                std::cout << "[OccupancyMapPipeline] Function running okay. staticVoxels Size: " << staticVoxels_.size() << "\n";
             } else {
                 std::cerr << "[OccupancyMapPipeline] Warning: Points and attributes are not synchronized or invalid.\n";
             }
