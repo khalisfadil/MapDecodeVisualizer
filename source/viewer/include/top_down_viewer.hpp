@@ -83,6 +83,4 @@ public:
      * @throws std::invalid_argument if `markersize` is non-positive.
      */
     std::shared_ptr<open3d::geometry::TriangleMesh> CreateVehicleMesh(float markersize, double yaw_rad);
-
-
 };

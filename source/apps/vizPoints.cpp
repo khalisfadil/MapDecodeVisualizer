@@ -120,22 +120,22 @@ int main() {
                                                     vizPointsUtils::attributesMutex);
         });
 
-        // Start Processing (10 Hz)
-        threads.emplace_back([&]() {
-            vizPointsUtils::runOccupancyMapViewer(vizPointsUtils::frameID, 
-                                                    vizPointsUtils::position,
-                                                    vizPointsUtils::orientation,
-                                                    vizPointsUtils::receivedStaticVoxels,
-                                                    vizPointsUtils::receivedOccupancyColors,
-                                                    vizPointsUtils::receivedReflectivityColors,
-                                                    vizPointsUtils::receivedIntensityColors,
-                                                    vizPointsUtils::receivedNIRColors,
-                                                    std::vector<int>{4, 5, 6, 7},
-                                                    vizPointsUtils::running,
-                                                    vizPointsUtils::consoleMutex,
-                                                    vizPointsUtils::pointsMutex,
-                                                    vizPointsUtils::attributesMutex);
-        });
+        // // Start Processing (10 Hz)
+        // threads.emplace_back([&]() {
+        //     vizPointsUtils::runOccupancyMapViewer(vizPointsUtils::frameID, 
+        //                                             vizPointsUtils::position,
+        //                                             vizPointsUtils::orientation,
+        //                                             vizPointsUtils::receivedStaticVoxels,
+        //                                             vizPointsUtils::receivedOccupancyColors,
+        //                                             vizPointsUtils::receivedReflectivityColors,
+        //                                             vizPointsUtils::receivedIntensityColors,
+        //                                             vizPointsUtils::receivedNIRColors,
+        //                                             std::vector<int>{4, 5, 6, 7},
+        //                                             vizPointsUtils::running,
+        //                                             vizPointsUtils::consoleMutex,
+        //                                             vizPointsUtils::pointsMutex,
+        //                                             vizPointsUtils::attributesMutex);
+        // });
 
         // Monitor signal and clean up
         while (vizPointsUtils::running) {
