@@ -62,7 +62,7 @@ public:
      * @note The Z-coordinate of the output mesh is fixed at 0. The grayscale intensity values are normalized
      *       to the range [0, 1] for use as vertex colors.
      */
-    std::shared_ptr<open3d::geometry::TriangleMesh> TopDownViewer::CreateVoxelSquares(
+    std::shared_ptr<open3d::geometry::TriangleMesh> CreateVoxelSquares(
         const std::vector<Eigen::Vector3f>& points,
         const Eigen::Vector3f& vehicle_position,
         const std::vector<Eigen::Vector3i>& grayscale_values,
