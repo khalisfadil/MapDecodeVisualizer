@@ -23,37 +23,6 @@
 
 // -----------------------------------------------------------------------------
 /**
- * @brief Static atomic flag indicating whether the program is running.
- *
- * @detail This static flag is used to control the program's termination state. 
- * It is shared across all instances of the class and is accessed and modified 
- * to manage whether the program should continue running or stop. The flag is atomic, 
- * ensuring safe access in a multithreaded environment.
- */
-std::atomic<bool> vizPointsUtils::running(true);  // Initialize as true
-
-// -----------------------------------------------------------------------------
-/**
- * @brief Static unique pointer to the shared OccupancyMap instance.
- *
- * @detail This static unique pointer holds a shared instance of the `OccupancyMap` class. 
- * It ensures that only one instance of the `OccupancyMap` object is used across all 
- * instances of the `vizPointsUtils` class. The instance is lazily initialized when needed.
- */
-std::unique_ptr<OccupancyMap> vizPointsUtils::occupancyMapInstance = nullptr;  // Initialize as nullptr
-
-// -----------------------------------------------------------------------------
-/**
- * @brief Static unique pointer to the shared ClusterExtractor instance.
- *
- * @detail This static unique pointer holds a shared instance of the `ClusterExtractor` class. 
- * It is used for cluster analysis and ensures that only one instance of `ClusterExtractor` 
- * is used across all `vizPointsUtils` instances. The instance is lazily initialized when needed.
- */
-std::unique_ptr<ClusterExtractor> vizPointsUtils::clusterExtractorInstance = nullptr;  // Initialize as nullptr
-
-// -----------------------------------------------------------------------------
-/**
  * @brief Main entry point for the program that listens to incoming UDP packets and processes them.
  *
  * @detail This function initializes the `vizPointsUtils` class, registers signal handlers for termination signals (SIGINT and SIGTERM), and starts multiple threads to handle UDP listening for points and attributes. It also manages the synchronization of data between threads using condition variables and mutexes. The program listens for incoming data, processes it in real-time (at a frequency of 10 Hz), and gracefully shuts down when a termination signal is received.

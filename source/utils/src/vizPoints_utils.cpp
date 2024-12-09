@@ -62,6 +62,17 @@ std::mutex vizPointsUtils::occupancyMapMutex;
 
 // -----------------------------------------------------------------------------
 /**
+ * @brief Static atomic flag indicating whether the program is running.
+ *
+ * @detail This static flag is used to control the program's termination state. 
+ * It is shared across all instances of the class and is accessed and modified 
+ * to manage whether the program should continue running or stop. The flag is atomic, 
+ * ensuring safe access in a multithreaded environment.
+ */
+std::atomic<bool> vizPointsUtils::running(true);  // Initialize as true
+
+// -----------------------------------------------------------------------------
+/**
  * @brief Condition variable for managing the processing queue.
  * 
  * @details Used to signal and synchronize threads waiting on events related 
