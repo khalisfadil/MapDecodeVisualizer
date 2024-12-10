@@ -249,7 +249,8 @@ void vizPointsUtils::initialize() {
 // Section: runOccupancyMapViewer
 // -----------------------------------------------------------------------------
 
-void vizPointsUtils::SetupTopDownView(open3d::visualization::Visualizer& vis, double cameraHeight = -50.0) {
+void vizPointsUtils::SetupTopDownView(open3d::visualization::Visualizer& vis, double cameraHeight) {
+    vis.GetRenderOption().background_color_ = Eigen::Vector3d(0.0, 0.0, 0.0);
     auto view_control = vis.GetViewControl();
     open3d::camera::PinholeCameraParameters camera_params;
     view_control.ConvertToPinholeCameraParameters(camera_params);
@@ -540,7 +541,7 @@ void vizPointsUtils::runOccupancyMapViewer(uint32_t& frameID,
     TopDownViewer viewer;
     open3d::visualization::Visualizer vis;
     vis.CreateVisualizerWindow("Top-Down View", 1000, 1000);
-    vizPointsUtils::SetupTopDownView(vis, -8.0);
+    vizPointsUtils::SetupTopDownView(vis, -50.0);
 
     while (running) {
         auto cycleStartTime = std::chrono::steady_clock::now();
