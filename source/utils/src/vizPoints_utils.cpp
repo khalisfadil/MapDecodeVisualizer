@@ -251,15 +251,21 @@ void vizPointsUtils::initialize() {
 
 void vizPointsUtils::SetupTopDownView(open3d::visualization::Visualizer& vis, double cameraHeight) {
     vis.GetRenderOption().background_color_ = Eigen::Vector3d(0.0, 0.0, 0.0);
-    auto view_control = vis.GetViewControl();
+
+    auto& view_control = vis.GetViewControl();
     open3d::camera::PinholeCameraParameters camera_params;
     view_control.ConvertToPinholeCameraParameters(camera_params);
+
     camera_params.extrinsic_ <<
-        1, 0, 0, 0,                  // Camera X-axis
-        0, 0, 1, cameraHeight,       // Camera Y-axis (down -Z, height set by cameraHeight)
-        0, -1, 0, 0,                 // Camera Z-axis (up vector)
-        0, 0, 0, 1;                  // Homogeneous coordinates
+        1, 0, 0, 0,
+        0, 0, 1, cameraHeight,
+        0, -1, 0, 0,
+        0, 0, 0, 1;
+
     view_control.ConvertFromPinholeCameraParameters(camera_params);
+
+    // Debug camera parameters
+    std::cout << "Camera extrinsics:\n" << camera_params.extrinsic_ << std::endl;
 }
 
 // -----------------------------------------------------------------------------
@@ -541,6 +547,8 @@ void vizPointsUtils::runOccupancyMapViewer(uint32_t& frameID,
     TopDownViewer viewer;
     open3d::visualization::Visualizer vis;
     vis.CreateVisualizerWindow("Top-Down View", 1000, 1000);
+
+    // Setup top-down view
     vizPointsUtils::SetupTopDownView(vis, -200.0);
 
     while (running) {
@@ -549,7 +557,7 @@ void vizPointsUtils::runOccupancyMapViewer(uint32_t& frameID,
         {
             std::scoped_lock lock(pointsMutex, attributesMutex, consoleMutex);
 
-            // Validate that all data vectors have the same size
+            // Validate data consistency
             if (staticVoxels.size() == occupancyColors.size() &&
                 staticVoxels.size() == reflectivityColors.size() &&
                 staticVoxels.size() == intensityColors.size() &&
@@ -559,17 +567,20 @@ void vizPointsUtils::runOccupancyMapViewer(uint32_t& frameID,
 
                 // Create voxel squares and vehicle mesh
                 auto static_squares = viewer.CreateVoxelSquares(staticVoxels, position, occupancyColors, mapConfig.resolution);
-
-                // Use orientation.z() for yaw
                 auto vehicle_mesh = viewer.CreateVehicleMesh(1.0f, orientation.z());
 
-                vis.AddGeometry(static_squares);
-                vis.AddGeometry(vehicle_mesh);
-
-                std::cout << "[OccupancyMapViewer] Function running okay. Frame ID: " << frameID << "\n";
-
-                if (!vis.PollEvents()) {  // Exit if user closes the window
+                // Add geometries and handle errors
+                if (!vis.AddGeometry(static_squares) || !vis.AddGeometry(vehicle_mesh)) {
+                    std::cerr << "[OccupancyMapViewer] Error: Failed to add geometries.\n";
                     running = false;
+                    break;
+                }
+
+                std::cout << "[OccupancyMapViewer] Frame ID: " << frameID << "\n";
+
+                if (!vis.PollEvents()) {
+                    running = false;
+                    break;
                 }
                 vis.UpdateRender();
             } else {
@@ -577,26 +588,18 @@ void vizPointsUtils::runOccupancyMapViewer(uint32_t& frameID,
             }
         }
 
-        // Calculate elapsed time and handle sleep
+        // Handle sleep and warnings
         auto elapsedTime = std::chrono::steady_clock::now() - cycleStartTime;
         auto remainingSleepTime = targetCycleDuration - elapsedTime;
 
         if (remainingSleepTime > std::chrono::milliseconds(0)) {
             std::this_thread::sleep_for(remainingSleepTime);
-            {
-                std::lock_guard<std::mutex> consoleLock(consoleMutex);
-                std::cout << "[OccupancyMapViewer] Processing Time: " 
-                          << std::chrono::duration_cast<std::chrono::milliseconds>(elapsedTime).count() << " ms\n";
-            }
         } else {
             std::lock_guard<std::mutex> consoleLock(consoleMutex);
-            std::cout << "Warning: [OccupancyMapViewer] Processing took longer than 100 ms. Time: " 
-                      << std::chrono::duration_cast<std::chrono::milliseconds>(elapsedTime).count()
-                      << " ms. Skipping sleep.\n";
+            std::cerr << "Warning: Processing took longer than target cycle duration.\n";
         }
     }
 
-    // Destroy the visualizer window after exiting the loop
     vis.DestroyVisualizerWindow();
 }
 
