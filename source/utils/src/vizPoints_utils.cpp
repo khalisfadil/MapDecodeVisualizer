@@ -275,7 +275,7 @@ void vizPointsUtils::SetupTopDownView(open3d::visualization::Visualizer& vis, do
 
     // Debug: Print extrinsics and zoom to verify
     std::cout << "Camera extrinsics applied:\n" << camera_params.extrinsic_ << std::endl;
-    std::cout << "Zoom level set to: " << view_control.GetZoom() << std::endl;
+    // std::cout << "Zoom level set to: " << view_control.GetZoom() << std::endl;
 
     // Force a refresh of the visualizer
     vis.PollEvents();
