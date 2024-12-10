@@ -568,7 +568,8 @@ void vizPointsUtils::runOccupancyMapViewer(uint32_t& frameID,
             std::scoped_lock lock(pointsMutex, attributesMutex, consoleMutex);
 
             // Validate data consistency
-            if (staticVoxels.size() == occupancyColors.size() &&
+            if (staticVoxels.size() > 0 &&
+                staticVoxels.size() == occupancyColors.size() &&
                 staticVoxels.size() == reflectivityColors.size() &&
                 staticVoxels.size() == intensityColors.size() &&
                 staticVoxels.size() == NIRColors.size()) {
