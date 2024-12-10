@@ -260,7 +260,7 @@ void vizPointsUtils::SetupTopDownView(open3d::visualization::Visualizer& vis, do
     open3d::camera::PinholeCameraParameters camera_params;
     view_control.ConvertToPinholeCameraParameters(camera_params);
 
-    // Correct extrinsics: Position the camera at (0, 0, |cameraHeight|) looking at the origin
+    // Correct extrinsics: Position the camera at (0, 0, cameraHeight) looking at the origin
     camera_params.extrinsic_ <<
         1, 0, 0, 0,                  // X-axis
         0, 1, 0, 0,                  // Y-axis
@@ -270,8 +270,12 @@ void vizPointsUtils::SetupTopDownView(open3d::visualization::Visualizer& vis, do
     // Apply the modified camera parameters
     view_control.ConvertFromPinholeCameraParameters(camera_params);
 
-    // Debug: Print extrinsics to verify
+    // Adjust zoom level
+    view_control.SetZoom(0.5); // 0.5 provides a wider view; adjust as needed (smaller = zoomed out)
+
+    // Debug: Print extrinsics and zoom to verify
     std::cout << "Camera extrinsics applied:\n" << camera_params.extrinsic_ << std::endl;
+    std::cout << "Zoom level set to: " << view_control.GetZoom() << std::endl;
 
     // Force a refresh of the visualizer
     vis.PollEvents();
