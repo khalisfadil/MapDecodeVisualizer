@@ -64,8 +64,8 @@ constexpr int MAX_NUM_POINT = 128 * 1024;  // Maximum number of points in any vo
  * define how the occupancy map is initialized and how the data is interpreted.
  */
 struct MapConfig {
-    float resolution = 2.0f;           ///< The resolution of the map in meters per voxel.
-    float reachingDistance = 500.0f;   ///< The maximum distance that can be reached in the map.
+    float resolution = 0.1f;           ///< The resolution of the map in meters per voxel.
+    float reachingDistance = 1000.0f;   ///< The maximum distance that can be reached in the map.
     Eigen::Vector3f center = Eigen::Vector3f(0.0f, 0.0f, 0.0f); ///< The center point of the map in 3D space.
 };
 

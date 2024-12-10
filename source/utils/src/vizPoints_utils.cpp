@@ -250,21 +250,21 @@ void vizPointsUtils::initialize() {
 // -----------------------------------------------------------------------------
 
 void vizPointsUtils::SetupTopDownView(open3d::visualization::Visualizer& vis, double cameraHeight) {
-    // Set background color to black
+    // Set the background color to black
     vis.GetRenderOption().background_color_ = Eigen::Vector3d(0.0, 0.0, 0.0);
 
     // Access the ViewControl
     auto& view_control = vis.GetViewControl();
 
-    // Directly modify camera extrinsics
+    // Get the current camera parameters
     open3d::camera::PinholeCameraParameters camera_params;
     view_control.ConvertToPinholeCameraParameters(camera_params);
 
-    // Camera extrinsics: look straight down from the specified height
+    // Correct extrinsics: Position the camera at (0, 0, |cameraHeight|) looking at the origin
     camera_params.extrinsic_ <<
         1, 0, 0, 0,                  // X-axis
-        0, 0, 1, cameraHeight,       // Y-axis (camera positioned at height)
-        0, -1, 0, 0,                 // Z-axis (camera looking down)
+        0, 1, 0, 0,                  // Y-axis
+        0, 0, 1, std::abs(cameraHeight), // Z-axis (camera positioned at height)
         0, 0, 0, 1;                  // Homogeneous coordinates
 
     // Apply the modified camera parameters
@@ -550,56 +550,66 @@ void vizPointsUtils::runOccupancyMapViewer(uint32_t& frameID,
                                            std::mutex& consoleMutex,
                                            std::mutex& pointsMutex,
                                            std::mutex& attributesMutex) {
+    // Set thread affinity for optimal core usage
     setThreadAffinity(allowedCores, consoleMutex);
 
-    const auto targetCycleDuration = std::chrono::milliseconds(200); // 10 Hz target
+    // Define target cycle duration (200ms = 5Hz)
+    const auto targetCycleDuration = std::chrono::milliseconds(200);
 
+    // Initialize Open3D visualizer
     TopDownViewer viewer;
     open3d::visualization::Visualizer vis;
-    vis.CreateVisualizerWindow("Top-Down View", 1000, 1000);
+    vis.CreateVisualizerWindow("Top-Down View", 2000, 2000);
 
-    // Setup top-down view
-    vizPointsUtils::SetupTopDownView(vis, 500.0);
+    // Setup initial top-down view
+    vizPointsUtils::SetupTopDownView(vis, 500.0); // Adjust camera height to a positive value
 
+    // Main loop for rendering and updating the viewer
     while (running) {
         auto cycleStartTime = std::chrono::steady_clock::now();
 
         {
+            // Lock all necessary mutexes for safe access to shared data
             std::scoped_lock lock(pointsMutex, attributesMutex, consoleMutex);
 
             // Validate data consistency
-            if (staticVoxels.size() > 0 &&
-                staticVoxels.size() == occupancyColors.size() &&
-                staticVoxels.size() == reflectivityColors.size() &&
-                staticVoxels.size() == intensityColors.size() &&
-                staticVoxels.size() == NIRColors.size()) {
-
-                vis.ClearGeometries();
-
-                // Create voxel squares and vehicle mesh
-                auto static_squares = viewer.CreateVoxelSquares(staticVoxels, position, occupancyColors, mapConfig.resolution);
-                auto vehicle_mesh = viewer.CreateVehicleMesh(1.0f, orientation.z());
-
-                // Add geometries and handle errors
-                if (!vis.AddGeometry(static_squares) || !vis.AddGeometry(vehicle_mesh)) {
-                    std::cerr << "[OccupancyMapViewer] Error: Failed to add geometries.\n";
-                    running = false;
-                    break;
-                }
-
-                std::cout << "[OccupancyMapViewer] Frame ID: " << frameID << "\n";
-
-                if (!vis.PollEvents()) {
-                    running = false;
-                    break;
-                }
-                vis.UpdateRender();
-            } else {
-                std::cerr << "[OccupancyMapViewer] Error: Data vectors have inconsistent sizes.\n";
+            if (staticVoxels.empty() || 
+                staticVoxels.size() != occupancyColors.size() ||
+                staticVoxels.size() != reflectivityColors.size() ||
+                staticVoxels.size() != intensityColors.size() ||
+                staticVoxels.size() != NIRColors.size()) {
+                std::cerr << "[OccupancyMapViewer] Error: Data vectors have inconsistent sizes or are empty.\n";
+                continue;
             }
+
+            // Clear existing geometries
+            vis.ClearGeometries();
+
+            // Create voxel squares and the vehicle mesh
+            auto static_squares = viewer.CreateVoxelSquares(staticVoxels, position, occupancyColors, mapConfig.resolution);
+            auto vehicle_mesh = viewer.CreateVehicleMesh(mapConfig.resolution, orientation.z());
+
+            // Add geometries to the visualizer
+            if (!vis.AddGeometry(static_squares) || !vis.AddGeometry(vehicle_mesh)) {
+                std::cerr << "[OccupancyMapViewer] Error: Failed to add geometries.\n";
+                running = false; // Exit if rendering fails
+                break;
+            }
+
+            // Output frame information
+            std::cout << "[OccupancyMapViewer] Frame ID: " << frameID << "\n";
+
+            // Poll events to handle user input and window interaction
+            if (!vis.PollEvents()) {
+                running = false; // Exit if the user closes the window
+                break;
+            }
+
+            // Update the render to display changes
+            vis.UpdateRender();
         }
 
-        // Handle sleep and warnings
+        // Handle sleep and ensure consistent frame rate
         auto elapsedTime = std::chrono::steady_clock::now() - cycleStartTime;
         auto remainingSleepTime = targetCycleDuration - elapsedTime;
 
@@ -607,11 +617,13 @@ void vizPointsUtils::runOccupancyMapViewer(uint32_t& frameID,
             std::this_thread::sleep_for(remainingSleepTime);
         } else {
             std::lock_guard<std::mutex> consoleLock(consoleMutex);
-            std::cerr << "Warning: Processing took longer than target cycle duration.\n";
+            std::cerr << "Warning: Processing took longer than the target cycle duration.\n";
         }
     }
 
+    // Cleanly destroy the visualizer window before exiting
     vis.DestroyVisualizerWindow();
 }
+
 
 
