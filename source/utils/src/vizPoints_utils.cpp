@@ -552,14 +552,14 @@ void vizPointsUtils::runOccupancyMapViewer(uint32_t& frameID,
                                            std::mutex& attributesMutex) {
     setThreadAffinity(allowedCores, consoleMutex);
 
-    const auto targetCycleDuration = std::chrono::milliseconds(100); // 10 Hz target
+    const auto targetCycleDuration = std::chrono::milliseconds(200); // 10 Hz target
 
     TopDownViewer viewer;
     open3d::visualization::Visualizer vis;
     vis.CreateVisualizerWindow("Top-Down View", 1000, 1000);
 
     // Setup top-down view
-    vizPointsUtils::SetupTopDownView(vis, -200.0);
+    vizPointsUtils::SetupTopDownView(vis, 500.0);
 
     while (running) {
         auto cycleStartTime = std::chrono::steady_clock::now();

@@ -120,7 +120,7 @@ int main() {
                                                     vizPointsUtils::attributesMutex);
         });
 
-        // Start Processing (10 Hz)
+        // Start Processing (5 Hz)
         threads.emplace_back([&]() {
             vizPointsUtils::runOccupancyMapViewer(vizPointsUtils::frameID, 
                                                     vizPointsUtils::position,
