@@ -541,7 +541,7 @@ void vizPointsUtils::runOccupancyMapViewer(uint32_t& frameID,
     TopDownViewer viewer;
     open3d::visualization::Visualizer vis;
     vis.CreateVisualizerWindow("Top-Down View", 1000, 1000);
-    vizPointsUtils::SetupTopDownView(vis, -50.0);
+    vizPointsUtils::SetupTopDownView(vis, -200.0);
 
     while (running) {
         auto cycleStartTime = std::chrono::steady_clock::now();
