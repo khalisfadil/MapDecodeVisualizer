@@ -474,23 +474,23 @@ void vizPointsUtils::runOccupancyMapPipeline(CallbackPoints::Points& points, Cal
 
                 // Process static voxels
                 std::vector<OccupancyMap::VoxelData> staticVoxels_ = occupancyMapInstance->getStaticVoxels();
-                // if (!staticVoxels_.empty()) {
-                auto voxelColors = occupancyMapInstance->computeVoxelColors(staticVoxels_);
-                staticVoxels = occupancyMapInstance->getVoxelCenters(staticVoxels_);
+                if (!staticVoxels_.empty()) {
+                    auto voxelColors = occupancyMapInstance->computeVoxelColors(staticVoxels_);
+                    staticVoxels = occupancyMapInstance->getVoxelCenters(staticVoxels_);
 
-                occupancyColors = std::get<0>(voxelColors);
-                reflectivityColors = std::get<1>(voxelColors);
-                intensityColors = std::get<2>(voxelColors);
-                NIRColors = std::get<3>(voxelColors);
+                    occupancyColors = std::get<0>(voxelColors);
+                    reflectivityColors = std::get<1>(voxelColors);
+                    intensityColors = std::get<2>(voxelColors);
+                    NIRColors = std::get<3>(voxelColors);
 
-                frameID = points.frameID;
-                position = points.NED.cast<float>();
-                orientation = points.RPY.cast<float>();
-                // }
+                    frameID = points.frameID;
+                    position = points.NED.cast<float>();
+                    orientation = points.RPY.cast<float>();
+                }
 
                 std::cout << "[OccupancyMapPipeline] Function running okay. Frame ID: " << frameID << "\n";
-                std::cout << "[OccupancyMapPipeline] Function running okay. pointCloud Size: " << pointCloud.size() << "\n";
-                std::cout << "[OccupancyMapPipeline] Function running okay. staticVoxels Size: " << staticVoxels_.size() << "\n";
+                // std::cout << "[OccupancyMapPipeline] Function running okay. pointCloud Size: " << pointCloud.size() << "\n";
+                // std::cout << "[OccupancyMapPipeline] Function running okay. staticVoxels Size: " << staticVoxels_.size() << "\n";
             } else {
                 std::cerr << "[OccupancyMapPipeline] Warning: Points and attributes are not synchronized or invalid.\n";
             }
