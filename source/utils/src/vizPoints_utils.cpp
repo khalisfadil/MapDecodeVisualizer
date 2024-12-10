@@ -250,22 +250,32 @@ void vizPointsUtils::initialize() {
 // -----------------------------------------------------------------------------
 
 void vizPointsUtils::SetupTopDownView(open3d::visualization::Visualizer& vis, double cameraHeight) {
+    // Set background color to black
     vis.GetRenderOption().background_color_ = Eigen::Vector3d(0.0, 0.0, 0.0);
 
+    // Access the ViewControl
     auto& view_control = vis.GetViewControl();
+
+    // Directly modify camera extrinsics
     open3d::camera::PinholeCameraParameters camera_params;
     view_control.ConvertToPinholeCameraParameters(camera_params);
 
+    // Camera extrinsics: look straight down from the specified height
     camera_params.extrinsic_ <<
-        1, 0, 0, 0,
-        0, 0, 1, cameraHeight,
-        0, -1, 0, 0,
-        0, 0, 0, 1;
+        1, 0, 0, 0,                  // X-axis
+        0, 0, 1, cameraHeight,       // Y-axis (camera positioned at height)
+        0, -1, 0, 0,                 // Z-axis (camera looking down)
+        0, 0, 0, 1;                  // Homogeneous coordinates
 
+    // Apply the modified camera parameters
     view_control.ConvertFromPinholeCameraParameters(camera_params);
 
-    // Debug camera parameters
-    std::cout << "Camera extrinsics:\n" << camera_params.extrinsic_ << std::endl;
+    // Debug: Print extrinsics to verify
+    std::cout << "Camera extrinsics applied:\n" << camera_params.extrinsic_ << std::endl;
+
+    // Force a refresh of the visualizer
+    vis.PollEvents();
+    vis.UpdateRender();
 }
 
 // -----------------------------------------------------------------------------
