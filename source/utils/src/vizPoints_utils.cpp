@@ -249,7 +249,7 @@ void vizPointsUtils::initialize() {
 // Section: runOccupancyMapViewer
 // -----------------------------------------------------------------------------
 
-void vizPointsUtils::SetupTopDownView(open3d::visualization::Visualizer& vis, double cameraHeight = -8.0) {
+void vizPointsUtils::SetupTopDownView(open3d::visualization::Visualizer& vis, double cameraHeight = -50.0) {
     auto view_control = vis.GetViewControl();
     open3d::camera::PinholeCameraParameters camera_params;
     view_control.ConvertToPinholeCameraParameters(camera_params);
@@ -539,7 +539,7 @@ void vizPointsUtils::runOccupancyMapViewer(uint32_t& frameID,
 
     TopDownViewer viewer;
     open3d::visualization::Visualizer vis;
-    vis.CreateVisualizerWindow("Top-Down View", 800, 800);
+    vis.CreateVisualizerWindow("Top-Down View", 1000, 1000);
     vizPointsUtils::SetupTopDownView(vis, -8.0);
 
     while (running) {
@@ -560,7 +560,7 @@ void vizPointsUtils::runOccupancyMapViewer(uint32_t& frameID,
                 auto static_squares = viewer.CreateVoxelSquares(staticVoxels, position, occupancyColors, mapConfig.resolution);
 
                 // Use orientation.z() for yaw
-                auto vehicle_mesh = viewer.CreateVehicleMesh(2.5f, orientation.z());
+                auto vehicle_mesh = viewer.CreateVehicleMesh(1.0f, orientation.z());
 
                 vis.AddGeometry(static_squares);
                 vis.AddGeometry(vehicle_mesh);

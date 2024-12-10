@@ -134,10 +134,13 @@ std::shared_ptr<open3d::geometry::TriangleMesh> TopDownViewer::CreateVehicleMesh
         throw std::invalid_argument("Marker size must be positive.");
     }
 
-    // Define vertices of the triangle (relative to the vehicle's local frame)
-    Eigen::Vector3d front_vertex(0.0, markersize / 2.0, 0.0);  // Forward
-    Eigen::Vector3d rear_left_vertex(-markersize / 2.0, -markersize / 2.0, 0.0);  // Rear-left
-    Eigen::Vector3d rear_right_vertex(markersize / 2.0, -markersize / 2.0, 0.0);  // Rear-right
+    // Define a scaling factor to increase the triangle size
+    double scale_factor = 1.0; // Increase the overall size
+
+    // Adjust vertices to make the bottom line and side lines more proportionate
+    Eigen::Vector3d front_vertex(0.0, scale_factor * markersize / 2.0, 0.0); // Forward
+    Eigen::Vector3d rear_left_vertex(-scale_factor * markersize / 3.0, -scale_factor * markersize / 2.0, 0.0); // Rear-left
+    Eigen::Vector3d rear_right_vertex(scale_factor * markersize / 3.0, -scale_factor * markersize / 2.0, 0.0); // Rear-right
 
     // Create rotation matrix for yaw
     Eigen::Matrix3d rotation_matrix;
