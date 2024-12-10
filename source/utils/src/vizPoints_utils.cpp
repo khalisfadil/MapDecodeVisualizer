@@ -559,7 +559,7 @@ void vizPointsUtils::runOccupancyMapViewer(uint32_t& frameID,
     // Initialize Open3D visualizer
     TopDownViewer viewer;
     open3d::visualization::Visualizer vis;
-    vis.CreateVisualizerWindow("Top-Down View", 2000, 2000);
+    vis.CreateVisualizerWindow("Top-Down View", 500, 500);
 
     // Setup initial top-down view
     vizPointsUtils::SetupTopDownView(vis, 500.0); // Adjust camera height to a positive value
