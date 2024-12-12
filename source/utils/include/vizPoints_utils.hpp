@@ -32,6 +32,7 @@
 #include "top_down_viewer.hpp"
 
 #include <boost/asio.hpp>
+#include <optional>
 #include <mutex>
 #include <thread>
 #include <iostream>
@@ -85,340 +86,570 @@ class vizPointsUtils {
          * and consistent cluster extraction.
          */
         static std::unique_ptr<ClusterExtractor> clusterExtractorInstance;
-
-        // -----------------------------------------------------------------------------
-        /**
-         * @brief Stores the voxel centers of the static map.
-         *
-         * This vector contains the 3D positions of voxel centers that represent the static map.
-         * It is updated in real-time and shared across threads for visualization or further processing.
-         */
-        static std::vector<Eigen::Vector3f> receivedStaticVoxels;
-
-        // -----------------------------------------------------------------------------
-        /**
-         * @brief Stores colors corresponding to voxel occupancy states.
-         *
-         * Each element represents the RGB color encoding of a voxel's occupancy state.
-         * It is used for rendering the occupancy map in visualization pipelines.
-         */
-        static std::vector<Eigen::Vector3i> receivedOccupancyColors;
-
-        // -----------------------------------------------------------------------------
-        /**
-         * @brief Stores colors corresponding to voxel reflectivity values.
-         *
-         * This vector contains the RGB color encoding of reflectivity values for each voxel.
-         * Reflectivity values are typically derived from sensor data and used in visualization.
-         */
-        static std::vector<Eigen::Vector3i> receivedReflectivityColors;
-
-        // -----------------------------------------------------------------------------
-        /**
-         * @brief Stores colors corresponding to voxel intensity values.
-         *
-         * Each element represents the RGB color encoding of intensity values for each voxel.
-         * Intensity values are typically derived from sensor readings and visualized to indicate
-         * the strength of the sensor return signal.
-         */
-        static std::vector<Eigen::Vector3i> receivedIntensityColors;
-
-        // -----------------------------------------------------------------------------
-        /**
-         * @brief Stores colors corresponding to voxel Near-Infrared (NIR) values.
-         *
-         * This vector contains the RGB color encoding of NIR data for each voxel. NIR values
-         * are often used in specialized visualization tasks or applications requiring spectral data.
-         */
-        static std::vector<Eigen::Vector3i> receivedNIRColors;
-
-        // -----------------------------------------------------------------------------
-        /**
-         * @brief Condition variable to signal availability of new point data.
-         *
-         * This condition variable is used to notify waiting threads when new point cloud data
-         * is available for processing.
-         */
-        static std::condition_variable pointsDataReadyCV;
         
         // -----------------------------------------------------------------------------
         /**
-         * @brief Condition variable to signal availability of new attribute data.
+         * @brief Global flag indicating whether the program is running.
          *
-         * This condition variable is used to notify waiting threads when new point attribute data
-         * (e.g., intensity, reflectivity, NIR) is available for processing.
-         */
-        static std::condition_variable attributesDataReadyCV;
-        
-        // -----------------------------------------------------------------------------
-        /**
-         * @brief Flag indicating whether new point cloud data is available.
-         *
-         * This atomic flag is set to true when new point cloud data is ready for processing,
-         * and false when data has been consumed.
-         */
-        static std::atomic<bool> pointsDataAvailable;
-        
-        // -----------------------------------------------------------------------------
-        /**
-         * @brief Flag indicating whether new attribute data is available.
-         *
-         * This atomic flag is set to true when new point attribute data (e.g., intensity, reflectivity, NIR)
-         * is ready for processing, and false when data has been consumed.
-         */
-        static std::atomic<bool> attributesDataAvailable;
-
-        // -----------------------------------------------------------------------------
-        /**
-         * @brief Stores the current frame ID.
-         *
-         * This variable tracks the frame ID of the latest data being processed. It is used
-         * for synchronization and to ensure consistency across point cloud and attribute data.
-         */
-        static uint32_t frameID;
-        
-        // -----------------------------------------------------------------------------
-        /**
-         * @brief Stores the current position of the vehicle or reference point.
-         *
-         * This vector represents the 3D position (X, Y, Z) of the vehicle or a reference point
-         * in the global frame. It is updated in real-time as new data is received.
-         */
-        static Eigen::Vector3f position;
-        
-        // -----------------------------------------------------------------------------
-        /**
-         * @brief Stores the current orientation of the vehicle.
-         *
-         * This vector represents the roll, pitch, and yaw (RPY) orientation of the vehicle
-         * in radians. It is updated in real-time as new data is received.
-         */
-        static Eigen::Vector3f orientation;
-
-        // -----------------------------------------------------------------------------
-        /**
-         * @brief Mutex for synchronizing console output.
-         *
-         * @detail This mutex ensures that console output is accessed and modified in a thread-safe 
-         * manner, preventing interleaving of log messages when multiple threads are involved.
-         */
-        static std::mutex consoleMutex;
-
-        // -----------------------------------------------------------------------------
-        /**
-         * @brief Atomic flag indicating whether the program is running.
-         *
-         * @detail This flag is used to control the termination of the program. It is set to `false` 
-         * when the program needs to stop, and its atomic nature ensures safe access across multiple threads.
+         * @details
+         * This static atomic boolean is used to control the running state of the program.
+         * It is shared across all threads to signal when the program should stop execution.
+         * 
+         * - **Initial Value**: `true` (indicating the program is running).
+         * - **Modification**: 
+         *   - Set to `false` by the signal handler (`signalHandler`) upon receiving termination signals
+         *     (`SIGINT` or `SIGTERM`).
+         *   - Threads monitor this flag to determine when to exit their loops or terminate processing.
+         * 
+         * @note
+         * - Declared as `std::atomic<bool>` to ensure thread-safe access and modification across multiple threads.
+         * - Being static, it is shared among all instances of the `vizPointsUtils` class.
          */
         static std::atomic<bool> running;
 
         // -----------------------------------------------------------------------------
         /**
-         * @brief Mutex for protecting access to points data.
+         * @brief Constructs the `vizPointsUtils` object and initializes static instances of key components.
          *
-         * @detail This mutex is used to ensure thread-safe access and modification of points data, 
-         * preventing race conditions when multiple threads are interacting with the points object.
+         * @details
+         * This constructor ensures that the shared static instances of `OccupancyMap` and `ClusterExtractor`
+         * are initialized if they have not already been created. These instances are configured using 
+         * parameters from the `mapConfig` and `clusterConfig` objects.
+         *
+         * - `occupancyMapInstance`:
+         *   - Initializes the shared occupancy map instance with resolution, reaching distance, and center from `mapConfig`.
+         * - `clusterExtractorInstance`:
+         *   - Initializes the shared cluster extractor instance with parameters from `clusterConfig` such as tolerance,
+         *     size thresholds, static thresholds, and various dynamic and similarity thresholds.
+         *
+         * This ensures that these components are instantiated once and reused across all instances of `vizPointsUtils`.
          */
-        static std::mutex pointsMutex;
+        vizPointsUtils();
 
         // -----------------------------------------------------------------------------
         /**
-         * @brief Mutex for protecting access to attributes data.
+         * @brief Handles termination signals (`SIGINT` and `SIGTERM`) to initiate a graceful shutdown.
          *
-         * @detail This mutex ensures that any access to attributes data is synchronized across threads 
-         * to avoid conflicts and ensure consistent updates to the attributes object.
-         */
-        static std::mutex attributesMutex;
-
-        // -----------------------------------------------------------------------------
-        /**
-         * @brief Condition variable for signaling between threads.
+         * @details
+         * This static method is invoked when a termination signal (`SIGINT` or `SIGTERM`) is received by the program.
+         * It performs the following tasks:
+         * 
+         * - Sets the `vizPointsUtils::running` flag to `false`, signaling all threads to stop execution.
+         * - Notifies all threads waiting on the `vizPointsUtils::queueCV` condition variable, ensuring they can exit cleanly.
+         * - Logs a shutdown message to the standard output (`STDOUT`), indicating the program is stopping its listeners
+         *   and processors.
+         * 
+         * The function is designed to be registered as a signal handler using `sigaction` or similar mechanisms.
          *
-         * @detail This condition variable is used to notify threads waiting for data processing to proceed, 
-         * providing a mechanism for synchronization and coordination between threads.
-         */
-        static std::condition_variable queueCV;
-
-        // -----------------------------------------------------------------------------
-        /**
-         * @brief Initializes shared resources if they have not been initialized.
+         * @param signal
+         * The signal number received by the program (`SIGINT` or `SIGTERM`).
          *
-         * @detail This function checks whether the static instances of `occupancyMapInstance` and
-         * `clusterExtractorInstance` have been initialized. If they have not, it initializes them 
-         * using configuration parameters defined in `MapConfig` and `ClusterConfig` respectively.
-         * This ensures that the shared resources (occupancy map and cluster extractor) are set up 
-         * only once and are ready for use in the program.
-         */
-        static void initialize();
-
-        // -----------------------------------------------------------------------------
-        /**
-         * @brief Starts a UDP listener for processing incoming packets.
-         *
-         * @detail This function initializes a UDP listener using Boost Asio to receive and process 
-         * incoming packets on the specified host and port. It ensures robust operation by managing 
-         * thread affinity, error handling, and logging. The received data is processed using a 
-         * callback processor, and the results are stored in a shared points data structure. 
-         * A condition variable and atomic flag are used to signal the availability of new data 
-         * for further processing in a multithreaded environment.
-         *
-         * @param ioContext Boost Asio IO context for asynchronous operations.
-         * @param host Hostname or IP address to bind the listener.
-         * @param port Port number for the listener.
-         * @param bufferSize Size of the UDP buffer.
-         * @param allowedCores Cores for setting thread affinity.
-         * @param callbackProcessor Handles incoming data packets.
-         * @param latestPoints Reference to shared points data structure.
-         * @param dataMutex Mutex for thread-safe data access.
-         * @param dataReadyCV Condition variable for notifying data updates.
-         * @param dataAvailable Atomic flag to indicate data readiness.
-         */
-        static void startListener(boost::asio::io_context& ioContext, 
-                                    const std::string& host, 
-                                    uint16_t port,
-                                    uint32_t bufferSize, 
-                                    const std::vector<int>& allowedCores,
-                                    CallbackPoints& callbackProcessor, 
-                                    CallbackPoints::Points& latestPoints,
-                                    std::mutex& consoleMutex,
-                                    std::mutex& dataMutex, 
-                                    std::condition_variable& dataReadyCV, 
-                                    std::atomic<bool>& dataAvailable,
-                                    std::atomic<bool>& running);
-        
-        // -----------------------------------------------------------------------------
-        /**
-         * @brief Sets thread affinity to specific CPU cores.
-         *
-         * @detail Restricts the current thread to run on the specified CPU cores provided in 
-         * the coreIDs vector. Ensures that only valid core IDs within the range of available 
-         * hardware cores are used. Logs errors and warnings for invalid inputs or failures 
-         * during the operation. Uses `pthread_setaffinity_np` for applying the CPU affinity.
-         *
-         * @param coreIDs A vector of integers specifying the core IDs for thread affinity.
-         */
-        static void setThreadAffinity(const std::vector<int>& coreIDs,std::mutex& consoleMutex);
-
-        // -----------------------------------------------------------------------------
-        /**
-         * @brief Handles termination signals to gracefully shut down the application.
-         *
-         * @detail Responds to SIGINT and SIGTERM signals by setting the `running` flag to false, 
-         * notifying all waiting threads via a condition variable, and logging a shutdown message 
-         * to the standard output. Ensures the application can cleanly exit and release resources 
-         * upon receiving termination signals.
-         *
-         * @param signal The signal number received by the application.
+         * @note
+         * The function is static because signal handlers cannot be non-static methods due to their required signature.
+         * Additionally, care is taken to use `write` instead of `std::cout` to ensure reentrancy and avoid undefined behavior
+         * in the signal handler context.
          */
         static void signalHandler(int signal);
 
-        // -----------------------------------------------------------------------------
-        /**
-        * @brief Runs the occupancy map pipeline for real-time processing and updates of voxel data.
-        *
-        * This function processes incoming point cloud data and attributes in a real-time loop. It computes
-        * occupancy map data, updates static voxel information, and extracts color attributes (occupancy, reflectivity,
-        * intensity, and NIR) for visualization or further processing. The function operates at a target
-        * frame rate of 10 Hz and utilizes mutexes for thread-safe data access.
-        *
-        * @param points Reference to the CallbackPoints object containing point cloud data.
-        * @param attributes Reference to the CallbackPoints object containing attribute data (intensity, reflectivity, NIR).
-        * @param frameID Reference to the current frame ID being processed.
-        * @param position Reference to the current position of the vehicle (updated in the loop).
-        * @param orientation Reference to the current orientation of the vehicle (updated in the loop).
-        * @param staticVoxels Reference to the vector containing voxel centers for the static map.
-        * @param occupancyColors Reference to the vector containing colors representing voxel occupancy states.
-        * @param reflectivityColors Reference to the vector containing colors representing voxel reflectivity values.
-        * @param intensityColors Reference to the vector containing colors representing voxel intensity values.
-        * @param NIRColors Reference to the vector containing colors representing voxel NIR values.
-        * @param allowedCores Vector of CPU core IDs that the processing thread is allowed to use.
-        * @param running Atomic flag indicating whether the pipeline should continue running (set to false to exit).
-        * @param consoleMutex Mutex for synchronizing console output.
-        * @param pointsMutex Mutex for synchronizing access to point data.
-        * @param attributesMutex Mutex for synchronizing access to attribute data.
-        *
-        * @note The function assumes that the number of points in the `points` and `attributes` objects match,
-        *       and their respective frame IDs are synchronized. If the data is inconsistent, the function
-        *       skips processing for the current cycle.
-        *
-        * @note The function targets a fixed processing rate of 10 Hz. If processing exceeds this duration,
-        *       a warning is logged, and the function continues without delay.
-        *
-        * @return void
-        *
-        * @throws std::runtime_error If `occupancyMapInstance` methods encounter errors (implementation-dependent).
-        */
-        static void runOccupancyMapPipeline(CallbackPoints::Points& points, CallbackPoints::Points& attributes,
-                                             uint32_t& frameID,
-                                             Eigen::Vector3f& position,
-                                             Eigen::Vector3f& orientation, 
-                                             std::vector<Eigen::Vector3f>& staticVoxels, 
-                                             std::vector<Eigen::Vector3i>& occupancyColors, 
-                                             std::vector<Eigen::Vector3i>& reflectivityColors,
-                                             std::vector<Eigen::Vector3i>& intensityColors, 
-                                             std::vector<Eigen::Vector3i>& NIRColors,
-                                             const std::vector<int>& allowedCores,
-                                             std::atomic<bool>& running,
-                                             std::mutex& consoleMutex,
-                                             std::mutex& pointsMutex,
-                                             std::mutex& attributesMutex);
+        
 
         // -----------------------------------------------------------------------------
         /**
-         * @brief Runs the occupancy map viewer for real-time visualization of voxel data and vehicle position.
+         * @brief Starts a UDP listener for incoming point cloud data packets.
          *
-         * This function creates a visualization window using Open3D and updates it at a fixed rate (10 Hz)
-         * with the latest occupancy map data and vehicle position. The map is rendered as a collection of 
-         * voxel squares, and the vehicle is represented as a triangular mesh. The function also handles
-         * user interaction, allowing the application to terminate gracefully when the visualization window
-         * is closed.
+         * @details
+         * This function initializes a UDP listener using Boost ASIO to receive point cloud data on the specified host and port.
+         * It processes the incoming data, updates shared buffers, and notifies waiting threads. The function runs in a thread
+         * and handles errors and reconnections gracefully. It operates while the `vizPointsUtils::running` flag remains true.
          *
-         * @param frameID The current frame ID of the occupancy map data (updated during visualization).
-         * @param position The vehicle's current position in the global frame (updated during visualization).
-         * @param orientation The vehicle's current orientation (yaw is used for the visualization).
-         * @param staticVoxels A vector of voxel centers representing the static map.
-         * @param occupancyColors A vector of colors corresponding to the occupancy state of each voxel.
-         * @param reflectivityColors A vector of colors corresponding to the reflectivity of each voxel.
-         * @param intensityColors A vector of colors corresponding to the intensity values of each voxel.
-         * @param NIRColors A vector of colors corresponding to the NIR values of each voxel.
-         * @param allowedCores A vector of CPU core IDs that the thread is allowed to run on.
-         * @param running An atomic flag to indicate whether the viewer is running (set to false to exit).
-         * @param consoleMutex A mutex for thread-safe console logging.
-         * @param pointsMutex A mutex for synchronizing access to point data.
-         * @param attributesMutex A mutex for synchronizing access to attribute data.
+         * - Validates the provided host and port before starting the listener.
+         * - Creates and configures a `UDPSocket` to handle incoming data packets.
+         * - Processes received packets using `CallbackPoints::process()` and updates thread-safe shared buffers.
+         * - Notifies other threads via `pointsDataReadyCV` when new data is available.
+         * - Handles errors during execution and restarts the `io_context` if needed (limited to `maxErrors` restarts).
+         * - Logs events (e.g., listener start, received packets, errors, and shutdown) for monitoring.
+         * - Gracefully shuts down when `vizPointsUtils::running` is set to `false`.
          *
-         * @note The function assumes all input vectors (`staticVoxels`, `occupancyColors`, `reflectivityColors`, 
-         *       `intensityColors`, and `NIRColors`) have the same size. If not, the function will log an error 
-         *       and skip the current update.
+         * @param ioContext
+         * Reference to a Boost ASIO `io_context` object used for asynchronous operations.
          *
-         * @throws std::runtime_error If the Open3D visualizer fails to initialize.
+         * @param host
+         * The hostname or IP address on which the listener should bind.
          *
-         * @return void
+         * @param port
+         * The port number on which the listener should listen for incoming packets.
+         *
+         * @param bufferSize
+         * Size of the buffer used for receiving data packets.
+         *
+         * @param allowedCores
+         * A vector of integers specifying the CPU cores to which the listener thread should be pinned for affinity.
+         *
+         * @note
+         * - The function logs errors and limits error logs to a maximum count (`maxErrors`).
+         * - If the host or port is invalid, the function logs an error and exits early.
+         * - The function runs `ioContext.run()` in a loop to handle multiple packets until the program stops.
          */
-        static void runOccupancyMapViewer(uint32_t& frameID,
-                                             Eigen::Vector3f& position,
-                                             Eigen::Vector3f& orientation,
-                                             std::vector<Eigen::Vector3f>& staticVoxels, 
-                                             std::vector<Eigen::Vector3i>& occupancyColors, 
-                                             std::vector<Eigen::Vector3i>& reflectivityColors,
-                                             std::vector<Eigen::Vector3i>& intensityColors, 
-                                             std::vector<Eigen::Vector3i>& NIRColors,
-                                             const std::vector<int>& allowedCores,
-                                             std::atomic<bool>& running,
-                                             std::mutex& consoleMutex,
-                                             std::mutex& pointsMutex,
-                                             std::mutex& attributesMutex);
+        void startPointsListener(boost::asio::io_context& ioContext, 
+                                    const std::string& host, 
+                                    uint16_t port,
+                                    uint32_t bufferSize, 
+                                    const std::vector<int>& allowedCores);
 
         // -----------------------------------------------------------------------------
+        /**
+         * @brief Starts a UDP listener for incoming attributes data packets.
+         *
+         * @details
+         * This function initializes a UDP listener using Boost ASIO to receive attributes data on the specified host and port.
+         * It processes the incoming data, updates shared buffers, and notifies waiting threads. The function runs in a thread
+         * and handles errors and reconnections gracefully. It operates while the `vizPointsUtils::running` flag remains true.
+         *
+         * - Validates the provided host and port before starting the listener.
+         * - Creates and configures a `UDPSocket` to handle incoming data packets.
+         * - Processes received packets using `CallbackPoints::process()` and updates thread-safe shared buffers for attributes.
+         * - Notifies other threads via `attributesDataReadyCV` when new data is available.
+         * - Handles errors during execution and restarts the `io_context` if needed (limited to `maxErrors` restarts).
+         * - Logs events (e.g., listener start, received packets, errors, and shutdown) for monitoring.
+         * - Gracefully shuts down when `vizPointsUtils::running` is set to `false`.
+         *
+         * @param ioContext
+         * Reference to a Boost ASIO `io_context` object used for asynchronous operations.
+         *
+         * @param host
+         * The hostname or IP address on which the listener should bind.
+         *
+         * @param port
+         * The port number on which the listener should listen for incoming packets.
+         *
+         * @param bufferSize
+         * Size of the buffer used for receiving data packets.
+         *
+         * @param allowedCores
+         * A vector of integers specifying the CPU cores to which the listener thread should be pinned for affinity.
+         *
+         * @note
+         * - The function logs errors and limits error logs to a maximum count (`maxErrors`).
+         * - If the host or port is invalid, the function logs an error and exits early.
+         * - The function runs `ioContext.run()` in a loop to handle multiple packets until the program stops.
+         */
+        void startAttributesListener(boost::asio::io_context& ioContext, 
+                                        const std::string& host, 
+                                        uint16_t port,
+                                        uint32_t bufferSize, 
+                                        const std::vector<int>& allowedCores);
+        
+        // -----------------------------------------------------------------------------
+        /**
+         * @brief Sets the CPU core affinity for the current thread.
+         *
+         * @details
+         * This function restricts the execution of the current thread to a specified set of CPU cores.
+         * It uses `pthread_setaffinity_np` to apply the core affinity on platforms that support POSIX threads.
+         * 
+         * - Validates the provided core IDs to ensure they fall within the range of available CPU cores.
+         * - Adds valid core IDs to a CPU set (`cpu_set_t`) and applies the affinity to the current thread.
+         * - Logs warnings for empty or invalid core IDs and errors if setting the affinity fails.
+         * - Outputs the list of cores successfully assigned to the thread.
+         *
+         * @param coreIDs
+         * A vector of integers specifying the CPU cores to which the current thread should be pinned.
+         *
+         * @note
+         * - If `coreIDs` is empty, the function logs a warning and does not modify thread affinity.
+         * - Invalid core IDs (e.g., negative values or IDs exceeding available cores) are skipped.
+         * - Uses `pthread_self()` to identify the current thread and apply the affinity.
+         * - Requires the program to run on a system that supports thread affinity (e.g., Linux).
+         *
+         * @warning
+         * - Setting thread affinity can reduce scheduling flexibility and may lead to suboptimal performance if used incorrectly.
+         * - Ensure that the provided core IDs align with the system's hardware configuration.
+         */
+        void setThreadAffinity(const std::vector<int>& coreIDs);
 
-        static void SetupTopDownView(open3d::visualization::Visualizer& vis, double cameraHeight);
+        // -----------------------------------------------------------------------------
+        /**
+         * @brief Processes synchronized point cloud and attributes data to update the occupancy map at 10 Hz.
+         *
+         * @details
+         * This function processes incoming point cloud and attributes data, synchronizes them by frame ID,
+         * and updates the occupancy map in real-time. The pipeline runs at a target frequency of 10 Hz,
+         * performing the following tasks:
+         * 
+         * - **Thread Affinity**:
+         *   - Sets thread affinity for optimal performance on specified CPU cores.
+         * 
+         * - **Data Synchronization**:
+         *   - Waits for new points and attributes data using condition variables.
+         *   - Adds the data to deques (`pointsDeque` and `attributesDeque`) to maintain a history of the last three frames.
+         *   - Searches the deques for the latest matching frame ID to ensure synchronization between points and attributes.
+         * 
+         * - **Occupancy Map Update**:
+         *   - Extracts data from the matched frame, including points and their attributes (intensity, reflectivity, and NIR).
+         *   - Runs the `occupancyMapInstance` pipeline to update the map with new point cloud data.
+         *   - Processes static voxels to compute their centers and associated color attributes.
+         *   - Updates shared buffers (`OMD_writeBuffer`) with the processed data for visualization.
+         * 
+         * - **Timing and Performance**:
+         *   - Ensures the processing loop maintains a target cycle time of 100 ms (10 Hz).
+         *   - Logs warnings if processing exceeds the target time.
+         *
+         * @param allowedCores
+         * A vector of integers specifying the CPU cores to which the pipeline thread should be pinned for affinity.
+         *
+         * @note
+         * - The function continuously runs while the static `vizPointsUtils::running` flag is `true`.
+         * - Data synchronization ensures that only matching frames are processed to avoid inconsistencies.
+         * - Thread-safe operations are implemented using mutexes and condition variables.
+         *
+         * @warning
+         * - If points and attributes are not synchronized, the function logs a warning and skips processing for that cycle.
+         */
+        void runOccupancyMapPipeline(const std::vector<int>& allowedCores);
 
+        // -----------------------------------------------------------------------------
+        /**
+         * @brief Visualizes the occupancy map and vehicle state in real time using Open3D.
+         *
+         * @details
+         * This function runs a real-time visualization loop at a target frequency of 5 Hz (200 ms per cycle). 
+         * It renders the occupancy map and vehicle orientation using Open3D's visualizer. The process includes:
+         *
+         * - **Thread Affinity**:
+         *   - Sets the thread's CPU affinity to optimize performance on specified cores.
+         *
+         * - **Data Synchronization**:
+         *   - Waits for the latest processed occupancy map data using a condition variable.
+         *   - Copies the data from shared buffers (`OMD_readBuffer`) for rendering.
+         *
+         * - **Rendering**:
+         *   - Clears existing geometries in the Open3D visualizer.
+         *   - Creates voxel squares (static objects) and a vehicle mesh for visualization.
+         *   - Adds the created geometries to the visualizer and updates the render.
+         *
+         * - **Error Handling**:
+         *   - Exits the loop and logs an error if adding geometries fails.
+         *   - Terminates gracefully if the user closes the visualizer window.
+         *
+         * - **Timing and Performance**:
+         *   - Maintains a target cycle duration of 200 ms (5 Hz).
+         *   - Logs warnings if rendering exceeds the target cycle time.
+         *
+         * @param allowedCores
+         * A vector of integers specifying the CPU cores to which the viewer thread should be pinned for affinity.
+         *
+         * @note
+         * - The function continuously runs while the static `vizPointsUtils::running` flag is `true`.
+         * - Uses thread-safe mechanisms (`occupancyMapDataMutex` and `occupancyMapDataReadyCV`) for data access.
+         * - Open3D visualizer must be correctly initialized before using this function.
+         *
+         * @warning
+         * - Ensure that the system supports Open3D visualization and required configurations (e.g., display settings).
+         * - If geometries fail to render, the visualization loop will terminate.
+         */
+        void runOccupancyMapViewer(const std::vector<int>& allowedCores);
+
+        // -----------------------------------------------------------------------------
+        /**
+         * @brief Configures the Open3D visualizer to display a top-down view of the scene.
+         *
+         * @details
+         * This function sets up the Open3D visualizer to use a top-down camera perspective with the following configurations:
+         *
+         * - **Background Color**:
+         *   - Sets the background color of the visualizer to black (`RGB: 0.0, 0.0, 0.0`).
+         *
+         * - **Camera Extrinsics**:
+         *   - Positions the camera directly above the origin at a height specified by `cameraHeight`.
+         *   - Ensures the camera is looking straight down towards the origin.
+         *
+         * - **Zoom Level**:
+         *   - Sets the zoom level of the visualizer to provide an optimal field of view.
+         *
+         * - **Render Refresh**:
+         *   - Updates the visualizer to apply the new camera settings and refresh the view.
+         *
+         * Debugging information, such as the applied camera extrinsics and zoom level, is logged to the console for verification.
+         *
+         * @param vis
+         * Reference to an Open3D `Visualizer` object that is configured for the top-down view.
+         *
+         * @param cameraHeight
+         * The height at which the camera is positioned above the origin (positive value for proper setup).
+         *
+         * @note
+         * - The camera extrinsics are set to ensure the camera is aligned directly along the Z-axis.
+         * - The zoom level may need adjustment depending on the size and scale of the scene.
+         *
+         * @warning
+         * - Ensure that the `vis` object is properly initialized before calling this function.
+         * - Camera settings may overwrite existing visualizer configurations.
+         */
+        void SetupTopDownView(open3d::visualization::Visualizer& vis, double cameraHeight);
 
     // -----------------------------------------------------------------------------
     // Section: private Class vizPointsUtils
     // -----------------------------------------------------------------------------
     private:
-        
+
+        // -----------------------------------------------------------------------------
+        /**
+         * @brief Stores processed occupancy map data for visualization.
+         *
+         * @details
+         * This structure holds the information required to render the occupancy map, including:
+         * - `frameID`: The ID of the processed frame.
+         * - `position`: The position of the vehicle in the NED coordinate system.
+         * - `orientation`: The orientation of the vehicle as roll, pitch, and yaw.
+         * - `staticVoxels`: A vector of voxel center positions in the map.
+         * - `occupancyColors`: Colors associated with voxel occupancy status.
+         * - `reflectivityColors`: Colors representing reflectivity data.
+         * - `intensityColors`: Colors representing intensity data.
+         * - `NIRColors`: Colors representing near-infrared data.
+         */
+        struct OccupancyMapData {
+            uint32_t frameID;
+            Eigen::Vector3f position;
+            Eigen::Vector3f orientation;
+            std::vector<Eigen::Vector3f> staticVoxels;
+            std::vector<Eigen::Vector3i> occupancyColors;
+            std::vector<Eigen::Vector3i> reflectivityColors;
+            std::vector<Eigen::Vector3i> intensityColors;
+            std::vector<Eigen::Vector3i> NIRColors;
+        };
+
+        // -----------------------------------------------------------------------------
+        /**
+         * @brief Double-buffered storage for occupancy map data.
+         *
+         * @details
+         * These buffers are used to store processed occupancy map data. One buffer (`OMD_writeBuffer`) 
+         * is used for writing new data, while the other (`OMD_readBuffer`) is used for reading.
+         */
+        OccupancyMapData OMD_buffer1, OMD_buffer2;
+
+        // -----------------------------------------------------------------------------
+        /**
+         * @brief Pointers to the active write and read buffers for occupancy map data.
+         *
+         * @details
+         * - `OMD_writeBuffer`: Points to the buffer used for writing new occupancy map data.
+         * - `OMD_readBuffer`: Points to the buffer used for reading processed occupancy map data.
+         */
+        OccupancyMapData* OMD_writeBuffer = &OMD_buffer1;
+
+        // -----------------------------------------------------------------------------
+        /**
+         * @brief Double-buffered storage for points data.
+         *
+         * @details
+         * These buffers are used to store incoming points data. One buffer is used for writing new 
+         * points data (`P_writeBuffer`), while the other is used for reading processed points data (`P_readBuffer`).
+         */
+        OccupancyMapData* OMD_readBuffer = &OMD_buffer2;
+
+        // -----------------------------------------------------------------------------
+        /**
+         * @brief Pointers to the active write and read buffers for points data.
+         *
+         * @details
+         * - `P_writeBuffer`: Points to the buffer used for writing new points data.
+         * - `P_readBuffer`: Points to the buffer used for reading processed points data.
+         */
+        CallbackPoints::Points P_buffer1, P_buffer2;
+
+        // -----------------------------------------------------------------------------
+        /**
+         * @brief Double-buffered storage for attributes data.
+         *
+         * @details
+         * These buffers are used to store incoming attributes data. One buffer is used for writing 
+         * new attributes data (`A_writeBuffer`), while the other is used for reading processed attributes data (`A_readBuffer`).
+         */
+        CallbackPoints::Points* P_writeBuffer = &P_buffer1;
+
+        // -----------------------------------------------------------------------------
+                /**
+         * @brief Double-buffered storage for attributes data.
+         *
+         * @details
+         * These buffers are used to store incoming attributes data. One buffer is used for writing 
+         * new attributes data (`A_writeBuffer`), while the other is used for reading processed attributes data (`A_readBuffer`).
+         */
+        CallbackPoints::Points* P_readBuffer = &P_buffer2;
+
+        // -----------------------------------------------------------------------------
+                /**
+         * @brief Double-buffered storage for attributes data.
+         *
+         * @details
+         * These buffers are used to store incoming attributes data. One buffer is used for writing 
+         * new attributes data (`A_writeBuffer`), while the other is used for reading processed attributes data (`A_readBuffer`).
+         */
+        CallbackPoints::Points A_buffer1, A_buffer2;
+
+        // -----------------------------------------------------------------------------
+        /**
+         * @brief Pointers to the active write and read buffers for attributes data.
+         *
+         * @details
+         * - `A_writeBuffer`: Points to the buffer used for writing new attributes data.
+         * - `A_readBuffer`: Points to the buffer used for reading processed attributes data.
+         */
+        CallbackPoints::Points* A_writeBuffer = &A_buffer1;
+
+        // -----------------------------------------------------------------------------
+        /**
+         * @brief Pointers to the active write and read buffers for attributes data.
+         *
+         * @details
+         * - `A_writeBuffer`: Points to the buffer used for writing new attributes data.
+         * - `A_readBuffer`: Points to the buffer used for reading processed attributes data.
+         */
+        CallbackPoints::Points* A_readBuffer = &A_buffer2;
+
+        // -----------------------------------------------------------------------------
+        /**
+         * @brief Condition variable to signal when new occupancy map data is ready.
+         *
+         * @details
+         * Used by threads to wait for or notify about the availability of new occupancy map data.
+         */
+        std::condition_variable occupancyMapDataReadyCV;
+
+        // -----------------------------------------------------------------------------
+        /**
+         * @brief Mutex for synchronizing access to occupancy map data.
+         *
+         * @details
+         * Ensures thread-safe access to the occupancy map buffers (`OMD_writeBuffer` and `OMD_readBuffer`).
+         */
+        std::mutex occupancyMapDataMutex;
+
+        // -----------------------------------------------------------------------------
+        /**
+         * @brief Flag indicating whether new occupancy map data is available.
+         *
+         * @details
+         * Set to `true` when new occupancy map data is written to the buffer. Reset to `false` after reading.
+         */
+        std::atomic<bool> occupancyMapDataReady = false;
+
+        // -----------------------------------------------------------------------------
+        /**
+         * @brief Condition variable to signal when new points data is ready.
+         *
+         * @details
+         * Used by threads to wait for or notify about the availability of new points data.
+         */
+        std::condition_variable pointsDataReadyCV;
+
+        // -----------------------------------------------------------------------------
+        /**
+         * @brief Flag indicating whether new points data is available.
+         *
+         * @details
+         * Set to `true` when new points data is written to the buffer. Reset to `false` after reading.
+         */
+        std::atomic<bool> pointsDataReady = false;;
+
+        // -----------------------------------------------------------------------------
+        /**
+         * @brief Mutex for synchronizing access to points data.
+         *
+         * @details
+         * Ensures thread-safe access to the points buffers (`P_writeBuffer` and `P_readBuffer`).
+         */
+        std::mutex vizPointsUtils::pointsMutex;
+
+        // -----------------------------------------------------------------------------
+        /**
+         * @brief Condition variable to signal when new attributes data is ready.
+         *
+         * @details
+         * Used by threads to wait for or notify about the availability of new attributes data.
+         */
+        std::condition_variable attributesDataReadyCV;
+
+        // -----------------------------------------------------------------------------
+        /**
+         * @brief Flag indicating whether new attributes data is available.
+         *
+         * @details
+         * Set to `true` when new attributes data is written to the buffer. Reset to `false` after reading.
+         */
+        std::atomic<bool> attributesDataReady;
+
+        // -----------------------------------------------------------------------------
+        /**
+         * @brief Mutex for synchronizing access to attributes data.
+         *
+         * @details
+         * Ensures thread-safe access to the attributes buffers (`A_writeBuffer` and `A_readBuffer`).
+         */
+        std::mutex vizPointsUtils::attributesMutex;
+
+        // -----------------------------------------------------------------------------
+        /**
+         * @brief Static condition variable for signaling across multiple threads.
+         *
+         * @details
+         * Used globally by threads for coordination and notification during shutdown or synchronization tasks.
+         */
+        static std::condition_variable queueCV;
+
+        // -----------------------------------------------------------------------------
+        /**
+         * @brief Mutex for synchronizing console output.
+         *
+         * @details
+         * Ensures thread-safe logging and prevents interleaved console output from multiple threads.
+         */
+        std::mutex consoleMutex;
+
+        // -----------------------------------------------------------------------------
+        /**
+         * @brief Configuration parameters for cluster extraction.
+         *
+         * @details
+         * Stores various thresholds and settings used by the `ClusterExtractor` for analyzing clusters in point cloud data.
+         */
+        ClusterConfig clusterConfig;
+
+        // -----------------------------------------------------------------------------
+        /**
+         * @brief Configuration parameters for the occupancy map.
+         *
+         * @details
+         * Stores parameters such as resolution, center position, and reaching distance for initializing and updating the occupancy map.
+         */
+        MapConfig mapConfig;
+
+        // -----------------------------------------------------------------------------
+        /**
+         * @brief Deque to store a history of recent points data.
+         *
+         * @details
+         * Used for synchronizing points and attributes data by maintaining a sliding window of the last three frames.
+         */
+        std::deque<CallbackPoints::Points> pointsDeque;
+
+        // -----------------------------------------------------------------------------
+        /**
+         * @brief Deque to store a history of recent attributes data.
+         *
+         * @details
+         * Used for synchronizing points and attributes data by maintaining a sliding window of the last three frames.
+         */
+        std::deque<CallbackPoints::Points> attributesDeque;
+
+        // -----------------------------------------------------------------------------
+        /**
+         * @brief Mutex for synchronizing access to `pointsDeque` and `attributesDeque`.
+         *
+         * @details
+         * Ensures thread-safe operations when adding or searching for synchronized data in the deques.
+         */
+        std::mutex dequeMutex;
 
 };

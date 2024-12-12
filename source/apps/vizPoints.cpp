@@ -23,21 +23,31 @@
 
 // -----------------------------------------------------------------------------
 /**
- * @brief Main entry point for the program that listens to incoming UDP packets and processes them.
+ * @brief Entry point of the program that initializes and manages listeners, processors, and signal handling.
  *
- * @detail This function initializes the `vizPointsUtils` class, registers signal handlers for termination signals (SIGINT and SIGTERM), and starts multiple threads to handle UDP listening for points and attributes. It also manages the synchronization of data between threads using condition variables and mutexes. The program listens for incoming data, processes it in real-time (at a frequency of 10 Hz), and gracefully shuts down when a termination signal is received.
+ * @details 
+ * This function performs the following tasks:
+ * - Initializes the `vizPointsUtils` object to manage various listeners and processing pipelines.
+ * - Registers signal handlers (`SIGINT` and `SIGTERM`) to gracefully shut down the program.
+ * - Starts multiple threads to handle:
+ *   - UDP-based points and attributes listeners using Boost ASIO.
+ *   - Occupancy map pipeline processing at 10 Hz.
+ *   - Occupancy map viewer visualization at 10 Hz.
+ * - Monitors the `running` flag, which is controlled by the signal handler, to decide when to stop execution.
+ * - Ensures all threads are joined, and the program exits gracefully.
  *
- * The flow of execution includes:
- * - Registering signal handlers for graceful shutdown.
- * - Starting listener threads for receiving points and attributes data.
- * - Starting a processing thread to handle the data at regular intervals.
- * - Monitoring the program's running state and stopping the listeners and threads when the program is signaled to terminate.
+ * @return int
+ * Returns `EXIT_SUCCESS` if the program exits normally, otherwise `EXIT_FAILURE` on encountering an exception.
+ *
+ * @throws std::exception
+ * Handles any exceptions thrown during the initialization or execution of the listeners or threads.
  */
 int main() {
 
-    // Register signal handler using the static signalHandler method
+    vizPointsUtils myObject;
+
     struct sigaction sigIntHandler;
-    sigIntHandler.sa_handler = vizPointsUtils::signalHandler;  // Directly use static method
+    sigIntHandler.sa_handler = vizPointsUtils::signalHandler;  
     sigemptyset(&sigIntHandler.sa_mask);
     sigIntHandler.sa_flags = 0;
 
@@ -45,10 +55,6 @@ int main() {
     sigaction(SIGTERM, &sigIntHandler, nullptr);
 
     std::cout << "Listening to incoming UDP packets..." << std::endl;
-
-    // Shared resources
-    CallbackPoints::Points points_, attributes_;
-    CallbackPoints callbackPoints_, callbackAttributes_;
 
     try {
         std::vector<std::thread> threads;
@@ -63,20 +69,11 @@ int main() {
         boost::asio::io_context ioContextPoints;
         threads.emplace_back(
             [&]() { 
-                vizPointsUtils::startListener(
-                    ioContextPoints, 
-                    pointsHost, 
-                    pointsPort, 
-                    1393, 
-                    std::vector<int>{8}, 
-                    callbackPoints_, 
-                    points_,
-                    vizPointsUtils::consoleMutex, 
-                    vizPointsUtils::pointsMutex,  
-                    vizPointsUtils::pointsDataReadyCV, 
-                    vizPointsUtils::pointsDataAvailable,
-                    vizPointsUtils::running
-                );
+                myObject.startPointsListener(ioContextPoints,
+                                                pointsHost, 
+                                                pointsPort, 
+                                                1393, 
+                                                std::vector<int>{8});
             }
         );
 
@@ -84,58 +81,25 @@ int main() {
         boost::asio::io_context ioContextAttributes;
         threads.emplace_back(
             [&]() { 
-                vizPointsUtils::startListener(
-                    ioContextAttributes, 
-                    attributesHost, 
-                    attributesPort, 
-                    1393, 
-                    std::vector<int>{9}, 
-                    callbackAttributes_, 
-                    attributes_,
-                    vizPointsUtils::consoleMutex, 
-                    vizPointsUtils::attributesMutex,  // Access static mutex
-                    vizPointsUtils::attributesDataReadyCV, 
-                    vizPointsUtils::attributesDataAvailable,
-                    vizPointsUtils::running
-                );
+                myObject.startAttributesListener(ioContextAttributes,
+                                                    attributesHost, 
+                                                    attributesPort, 
+                                                    1393, 
+                                                    std::vector<int>{9});
             }
         );
 
         // Start Processing (10 Hz)
         threads.emplace_back([&]() {
-            vizPointsUtils::runOccupancyMapPipeline(points_, 
-                                                    attributes_,
-                                                    vizPointsUtils::frameID,
-                                                    vizPointsUtils::position,
-                                                    vizPointsUtils::orientation,
-                                                    vizPointsUtils::receivedStaticVoxels,
-                                                    vizPointsUtils::receivedOccupancyColors,
-                                                    vizPointsUtils::receivedReflectivityColors,
-                                                    vizPointsUtils::receivedIntensityColors,
-                                                    vizPointsUtils::receivedNIRColors,
-                                                    std::vector<int>{0, 1, 2, 3},
-                                                    vizPointsUtils::running,
-                                                    vizPointsUtils::consoleMutex,
-                                                    vizPointsUtils::pointsMutex,
-                                                    vizPointsUtils::attributesMutex);
-        });
+            myObject.runOccupancyMapPipeline(std::vector<int>{0, 1, 2, 3});
+            }
+        );
 
-        // Start Processing (5 Hz)
+        // Start Processing (10 Hz)
         threads.emplace_back([&]() {
-            vizPointsUtils::runOccupancyMapViewer(vizPointsUtils::frameID, 
-                                                    vizPointsUtils::position,
-                                                    vizPointsUtils::orientation,
-                                                    vizPointsUtils::receivedStaticVoxels,
-                                                    vizPointsUtils::receivedOccupancyColors,
-                                                    vizPointsUtils::receivedReflectivityColors,
-                                                    vizPointsUtils::receivedIntensityColors,
-                                                    vizPointsUtils::receivedNIRColors,
-                                                    std::vector<int>{4, 5, 6, 7},
-                                                    vizPointsUtils::running,
-                                                    vizPointsUtils::consoleMutex,
-                                                    vizPointsUtils::pointsMutex,
-                                                    vizPointsUtils::attributesMutex);
-        });
+            myObject.runOccupancyMapViewer(std::vector<int>{4, 5, 6, 7});
+            }
+        );
 
         // Monitor signal and clean up
         while (vizPointsUtils::running) {

@@ -135,7 +135,7 @@ std::shared_ptr<open3d::geometry::TriangleMesh> TopDownViewer::CreateVehicleMesh
     }
 
     // Define a scaling factor to increase the triangle size
-    double scale_factor = 1.0; // Increase the overall size
+    double scale_factor = 3.0; // Increase the overall size (adjust as needed)
 
     // Adjust vertices to make the bottom line and side lines more proportionate
     Eigen::Vector3d front_vertex(0.0, scale_factor * markersize / 2.0, 0.0); // Forward
