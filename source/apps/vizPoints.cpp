@@ -54,7 +54,7 @@ int main() {
     sigaction(SIGINT, &sigIntHandler, nullptr);
     sigaction(SIGTERM, &sigIntHandler, nullptr);
 
-    std::cout << "Listening to incoming UDP packets..." << std::endl;
+    std::cout << "[Main] Listening to incoming UDP packets..." << std::endl;
 
     try {
         std::vector<std::thread> threads;
@@ -118,10 +118,10 @@ int main() {
         }
 
     } catch (const std::exception& e) {
-        std::cerr << "Error: " << e.what() << std::endl;
+        std::cerr << "Error: [Main] " << e.what() << std::endl;
         return EXIT_FAILURE;
     }
 
-    std::cout << "All listeners stopped. Exiting program." << std::endl;
+    std::cout << "[Main] All listeners stopped. Exiting program." << std::endl;
     return EXIT_SUCCESS;
 }
