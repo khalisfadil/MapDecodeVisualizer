@@ -650,6 +650,7 @@ class vizPointsUtils {
          * @details
          * Ensures thread-safe operations when adding or searching for synchronized data in the deques.
          */
+
         std::mutex dequeMutex;
 
 };
