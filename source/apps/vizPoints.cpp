@@ -122,6 +122,6 @@ int main() {
         return EXIT_FAILURE;
     }
 
-    std::cout << "[Main] All listeners stopped. Exiting program." << std::endl;
+    std::cout << "[Main]All listeners stopped. Exiting program." << std::endl;
     return EXIT_SUCCESS;
 }
