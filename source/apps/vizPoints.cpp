@@ -55,7 +55,6 @@ int main() {
     sigaction(SIGTERM, &sigIntHandler, nullptr);
 
     // Initialize Open3D visualizer
-    TopDownViewer viewer;
     open3d::visualization::Visualizer vis;
     vis.CreateVisualizerWindow("Top-Down View", 500, 500);
 
@@ -108,8 +107,7 @@ int main() {
 
         // Start Processing (10 Hz)
         threads.emplace_back([&]() {
-            myObject.runOccupancyMapViewer(std::vector<int>{4, 5, 6, 7},
-                                            viewer, vis);
+            myObject.runOccupancyMapViewer(std::vector<int>{4, 5, 6, 7}, vis);
             }
         );
 
