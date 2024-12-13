@@ -178,6 +178,11 @@ void vizPointsUtils::startPointsListener(boost::asio::io_context& ioContext,
                 *P_writeBuffer = latestPoints;
                 std::swap(P_writeBuffer, P_readBuffer);
                 pointsDataReady = true;
+                std::cout << "[PointsListener] Data (first 10 bytes): ";
+                    for (size_t i = 0; i < std::min(data.size(), size_t(10)); ++i) {
+                        std::cout << static_cast<int>(data[i]) << " ";
+                    }
+                    std::cout << std::endl;
                 std::cout << "[latestPoints] numVal :" << latestPoints.numVal << std::endl;
                 std::cout << "[P_writeBuffer] numVal :" << P_writeBuffer->numVal << std::endl;
             }
@@ -265,6 +270,11 @@ void vizPointsUtils::startAttributesListener(boost::asio::io_context& ioContext,
                 *A_writeBuffer = latestAttributes;
                 std::swap(A_writeBuffer, A_readBuffer);
                 attributesDataReady = true;
+                std::cout << "[AttributesListener] Data (first 10 bytes): ";
+                    for (size_t i = 0; i < std::min(data.size(), size_t(10)); ++i) {
+                        std::cout << static_cast<int>(data[i]) << " ";
+                    }
+                    std::cout << std::endl;
                 std::cout << "[latestAttributes] numVal :" << latestAttributes.numVal << std::endl;
                 std::cout << "[A_writeBuffer] numVal :" << A_writeBuffer->numVal << std::endl;
             }
