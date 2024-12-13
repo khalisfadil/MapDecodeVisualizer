@@ -111,7 +111,7 @@ int main() {
 
         // Stop IO contexts
         ioContextPoints.stop();
-        //ioContextAttributes.stop();
+        ioContextAttributes.stop();
 
         // Join all threads
         for (auto& thread : threads) {
