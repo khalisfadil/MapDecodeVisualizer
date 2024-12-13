@@ -14,10 +14,8 @@ CallbackPoints::CallbackPoints()
 
 void CallbackPoints::process(const std::vector<uint8_t>& data, Points& points) {
     // Check if the input data is valid
-    if (data.empty()) {
-        std::cout << "[0] data.empty()"<< std::endl;
-        return;
-    }
+    if (data.empty()) return;
+    
     // Check the header byte to ensure data packet integrity
     if (data[0] == 0x53) { // Byte 0: Header byte
         
@@ -70,9 +68,7 @@ void CallbackPoints::process(const std::vector<uint8_t>& data, Points& points) {
 
         // Validate packet size and process 3D points
         if (data.size() - 73 == temp_numXYZ * 12) {
-            std::cout << "[8] data.size() - 73 == temp_numXYZ * 12'"<< std::endl;
             currSegmIdx_++;
-            std::cout << "[9] Increment current currSegmIdx_: "<< currSegmIdx_ << std::endl;
 
             uint32_t temp_offset = temp_segm * 110;
 
