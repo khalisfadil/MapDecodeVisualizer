@@ -560,7 +560,7 @@ class vizPointsUtils {
          * @details
          * Ensures thread-safe access to the points buffers (`P_writeBuffer` and `P_readBuffer`).
          */
-        std::mutex vizPointsUtils::pointsMutex;
+        std::mutex pointsMutex;
 
         // -----------------------------------------------------------------------------
         /**
@@ -587,7 +587,7 @@ class vizPointsUtils {
          * @details
          * Ensures thread-safe access to the attributes buffers (`A_writeBuffer` and `A_readBuffer`).
          */
-        std::mutex vizPointsUtils::attributesMutex;
+        std::mutex attributesMutex;
 
         // -----------------------------------------------------------------------------
         /**
