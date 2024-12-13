@@ -498,7 +498,7 @@ void vizPointsUtils::runOccupancyMapViewer(const std::vector<int>& allowedCores)
     vis.CreateVisualizerWindow("Top-Down View", 500, 500);
 
     // Setup initial top-down view
-    SetupTopDownView(vis, 500.0); // Adjust camera height to a positive value
+    SetupTopDownView(vis, 1000.0); // Adjust camera height to a positive value
 
     // Main loop for rendering and updating the viewer
     while (vizPointsUtils::running) {
