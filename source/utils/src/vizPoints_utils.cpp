@@ -490,20 +490,15 @@ void vizPointsUtils::runOccupancyMapPipeline(const std::vector<int>& allowedCore
 // Section: runOccupancyMapViewer
 // -----------------------------------------------------------------------------
 
-void vizPointsUtils::runOccupancyMapViewer(const std::vector<int>& allowedCores) {
+void vizPointsUtils::runOccupancyMapViewer(const std::vector<int>& allowedCores, 
+                                            TopDownViewer viewer, open3d::visualization::Visualizer& vis) {
     // Set thread affinity for optimal core usage
     setThreadAffinity(allowedCores);
 
     // Define target cycle duration (200ms = 5Hz)
     const auto targetCycleDuration = std::chrono::milliseconds(150);
 
-    // Initialize Open3D visualizer
-    TopDownViewer viewer;
-    open3d::visualization::Visualizer vis;
-    vis.CreateVisualizerWindow("Top-Down View", 500, 500);
-
-    // Setup initial top-down view
-    SetupTopDownView(vis, 5000.0); // Adjust camera height to a positive value
+    
 
     // Main loop for rendering and updating the viewer
     while (vizPointsUtils::running) {
