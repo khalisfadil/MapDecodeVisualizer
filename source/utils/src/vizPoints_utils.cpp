@@ -22,15 +22,16 @@
 #include "vizPoints_utils.hpp"
 
 // -----------------------------------------------------------------------------
-// Section: declaration
+// Section: static declaration
 // -----------------------------------------------------------------------------
-
 
 std::unique_ptr<OccupancyMap> vizPointsUtils::occupancyMapInstance = nullptr;
 
-
 std::unique_ptr<ClusterExtractor> vizPointsUtils::clusterExtractorInstance = nullptr;
 
+std::atomic<bool> vizPointsUtils::running = true; // Initialize the running flag to true
+
+std::condition_variable vizPointsUtils::queueCV;  // Define the condition variable
 
 // -----------------------------------------------------------------------------
 // Section: Constructor

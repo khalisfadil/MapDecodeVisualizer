@@ -551,7 +551,7 @@ class vizPointsUtils {
          * @details
          * Set to `true` when new points data is written to the buffer. Reset to `false` after reading.
          */
-        std::atomic<bool> pointsDataReady = false;;
+        std::atomic<bool> pointsDataReady = false;
 
         // -----------------------------------------------------------------------------
         /**
@@ -578,7 +578,7 @@ class vizPointsUtils {
          * @details
          * Set to `true` when new attributes data is written to the buffer. Reset to `false` after reading.
          */
-        std::atomic<bool> attributesDataReady;
+        std::atomic<bool> attributesDataReady = false;
 
         // -----------------------------------------------------------------------------
         /**
