@@ -358,7 +358,7 @@ void vizPointsUtils::runOccupancyMapPipeline(const std::vector<int>& allowedCore
             pointsDataReadyCV.wait(pLock, [this] { return this->pointsDataReady.load(); });
             localPointsBuffer = *P_readBuffer; // Copy the read buffer
             pointsDataReady = false; // Reset dataReady flag
-            std::cout << "[P_readBuffer] frameID :" << P_readBuffer->frameID << " numVal :" << P_readBuffer->numVal << std::endl;
+            // std::cout << "[P_readBuffer] frameID :" << P_readBuffer->frameID << " numVal :" << P_readBuffer->numVal << std::endl;
         }
 
         {   
@@ -367,7 +367,7 @@ void vizPointsUtils::runOccupancyMapPipeline(const std::vector<int>& allowedCore
             attributesDataReadyCV.wait(attLock, [this] { return this->attributesDataReady.load(); });
             localAttributessBuffer = *A_readBuffer; // Copy the read buffer
             attributesDataReady = false; // Reset dataReady flag
-            std::cout << "[A_readBuffer] frameID :" << A_readBuffer->frameID << " numVal :" << A_readBuffer->numVal << std::endl;
+            // std::cout << "[A_readBuffer] frameID :" << A_readBuffer->frameID << " numVal :" << A_readBuffer->numVal << std::endl;
         }
 
         std::optional<std::pair<CallbackPoints::Points, CallbackPoints::Points>> matchedData;
@@ -398,6 +398,9 @@ void vizPointsUtils::runOccupancyMapPipeline(const std::vector<int>& allowedCore
         OccupancyMapData localBuffer;
 
         if (matchedData.has_value()) {
+
+            std::cout << "[OccupancyMapPipeline] matchedData has value"  << std::endl;
+
             // Access the matched data
             const auto& [matchedPoints, matchedAttributes] = matchedData.value();
 
