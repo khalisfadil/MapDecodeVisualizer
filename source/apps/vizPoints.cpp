@@ -56,6 +56,9 @@ int main() {
 
     std::cout << "[Main] Listening to incoming UDP packets..." << std::endl;
 
+     CallbackPoints::Points points;
+     CallbackPoints callbackPoints;
+
     try {
         std::vector<std::thread> threads;
 
@@ -73,7 +76,9 @@ int main() {
                                                 pointsHost, 
                                                 pointsPort, 
                                                 1393, 
-                                                std::vector<int>{8});
+                                                std::vector<int>{8},
+                                                callbackPoints,
+                                                points);
             }
         );
 

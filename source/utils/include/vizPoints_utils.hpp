@@ -194,7 +194,9 @@ class vizPointsUtils {
                                     const std::string& host, 
                                     uint16_t port,
                                     uint32_t bufferSize, 
-                                    const std::vector<int>& allowedCores);
+                                    const std::vector<int>& allowedCores,
+                                    CallbackPoints& callbackPoints, 
+                                    CallbackPoints::Points& points);
 
         // -----------------------------------------------------------------------------
         /**

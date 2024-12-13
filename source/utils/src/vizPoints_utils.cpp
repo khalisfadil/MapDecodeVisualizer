@@ -147,7 +147,9 @@ void vizPointsUtils::startPointsListener(boost::asio::io_context& ioContext,
                                             const std::string& host, 
                                             uint16_t port,
                                             uint32_t bufferSize, 
-                                            const std::vector<int>& allowedCores) {
+                                            const std::vector<int>& allowedCores,
+                                            CallbackPoints& callbackPoints, 
+                                            CallbackPoints::Points& points) {
 
     setThreadAffinity(allowedCores);
     
@@ -160,7 +162,7 @@ void vizPointsUtils::startPointsListener(boost::asio::io_context& ioContext,
     try {
         // Initialize the UDP socket
         UDPSocket listener(ioContext, host, port, [&](const std::vector<uint8_t>& data) {
-            
+
             // {
             //     std::lock_guard<std::mutex> consoleLock(consoleMutex);
             //     auto now = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
@@ -168,15 +170,11 @@ void vizPointsUtils::startPointsListener(boost::asio::io_context& ioContext,
             //               << "] [PointsListener] Received packet of size: " << data.size() << " bytes on port: " << port << std::endl;
             // }
 
-            CallbackPoints::Points latestPoints;
-            CallbackPoints callbackPoints;
-            callbackPoints.process(data, latestPoints);
-
             // Swap buffers atomically
             {
                 std::lock_guard<std::mutex> pLock(pointsMutex);
-                //callbackPoints.process(data, latestPoints);
-                *P_writeBuffer = latestPoints;
+                callbackPoints.process(data, points);
+                *P_writeBuffer = points;
                 std::swap(P_writeBuffer, P_readBuffer);
                 pointsDataReady = true;
                 // std::cout << "[PointsListener] Data (first 10 bytes): ";
