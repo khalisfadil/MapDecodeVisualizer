@@ -78,10 +78,11 @@ void CallbackPoints::process(const std::vector<uint8_t>& data, Points& points) {
             RPY_ << temp_rpy[0], temp_rpy[1], temp_rpy[2];
             receivedNumXYZ_ = 0;
             frameID_ = temp_frameID;
+            std::cout << "[7] Resetting frameID_ to temp_frameID for new frame" << frameID_ << std::endl;
             t_ = temp_t;
             maxNumSegment_ = temp_maxSegm;
             currSegmIdx_ = 0;
-            std::cout << "[7] Resetting currSegmIdx_ to 0 for new frame" << maxNumSegment_ << std::endl;
+            std::cout << "[7] Resetting currSegmIdx_ to 0 for new frame" << currSegmIdx_ << std::endl;
 
         }
 
@@ -89,7 +90,7 @@ void CallbackPoints::process(const std::vector<uint8_t>& data, Points& points) {
         if (data.size() - 73 == temp_numXYZ * 12) {
             std::cout << "[8] data.size() - 73 == temp_numXYZ * 12'"<< std::endl;
             currSegmIdx_++;
-            std::cout << "[9] Increment current currSegmIdx_: "<< maxNumSegment_ << std::endl;
+            std::cout << "[9] Increment current currSegmIdx_: "<< currSegmIdx_ << std::endl;
 
             uint32_t temp_offset = temp_segm * 110;
 
