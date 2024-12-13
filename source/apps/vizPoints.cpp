@@ -92,11 +92,11 @@ int main() {
             }
         );
 
-        // // Start Processing (10 Hz)
-        // threads.emplace_back([&]() {
-        //     myObject.runOccupancyMapPipeline(std::vector<int>{0, 1, 2, 3});
-        //     }
-        // );
+        // Start Processing (10 Hz)
+        threads.emplace_back([&]() {
+            myObject.runOccupancyMapPipeline(std::vector<int>{0, 1, 2, 3});
+            }
+        );
 
         // // Start Processing (10 Hz)
         // threads.emplace_back([&]() {

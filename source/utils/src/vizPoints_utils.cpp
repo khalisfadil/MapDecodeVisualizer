@@ -180,8 +180,6 @@ void vizPointsUtils::startPointsListener(boost::asio::io_context& ioContext,
                 //         std::cout << static_cast<int>(data[i]) << " ";
                 //     }
                 //     std::cout << std::endl;
-                std::cout << "[latestPoints] numVal :" << latestPoints.numVal << std::endl;
-                std::cout << "[P_writeBuffer] numVal :" << P_writeBuffer->numVal << std::endl;
             }
             pointsDataReadyCV.notify_one();
 
@@ -271,8 +269,6 @@ void vizPointsUtils::startAttributesListener(boost::asio::io_context& ioContext,
                 //     std::cout << std::endl;
                 // std::cout << "[latestAttributes] numVal :" << latestAttributes.numVal << std::endl;
                 // std::cout << "[A_writeBuffer] numVal :" << A_writeBuffer->numVal << std::endl;
-                std::cout << "[latestAttributes] numVal :" << latestAttributes.numVal << std::endl;
-                std::cout << "[A_writeBuffer] numVal :" << A_writeBuffer->numVal << std::endl;
             }
             attributesDataReadyCV.notify_one();
 
@@ -362,7 +358,7 @@ void vizPointsUtils::runOccupancyMapPipeline(const std::vector<int>& allowedCore
             pointsDataReadyCV.wait(pLock, [this] { return this->pointsDataReady.load(); });
             localPointsBuffer = *P_readBuffer; // Copy the read buffer
             pointsDataReady = false; // Reset dataReady flag
-            std::cout << "[P_readBuffer] numVal :" << P_readBuffer->numVal << std::endl;
+            std::cout << "[P_readBuffer] frameID :" << P_readBuffer->frameID << " numVal :" << P_readBuffer->numVal << std::endl;
         }
 
         {   
@@ -371,7 +367,7 @@ void vizPointsUtils::runOccupancyMapPipeline(const std::vector<int>& allowedCore
             attributesDataReadyCV.wait(attLock, [this] { return this->attributesDataReady.load(); });
             localAttributessBuffer = *A_readBuffer; // Copy the read buffer
             attributesDataReady = false; // Reset dataReady flag
-            std::cout << "[A_readBuffer] numVal :" << A_readBuffer->numVal << std::endl;
+            std::cout << "[A_readBuffer] frameID :" << A_readBuffer->frameID << " numVal :" << A_readBuffer->numVal << std::endl;
         }
 
         std::optional<std::pair<CallbackPoints::Points, CallbackPoints::Points>> matchedData;
