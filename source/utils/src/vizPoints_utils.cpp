@@ -344,7 +344,7 @@ void vizPointsUtils::runOccupancyMapPipeline(const std::vector<int>& allowedCore
     // Set thread affinity for performance optimization
     setThreadAffinity(allowedCores);
 
-    const auto targetCycleDuration = std::chrono::milliseconds(100); // Target 10 Hz processing rate
+    const auto targetCycleDuration = std::chrono::milliseconds(200); // Target 10 Hz processing rate
 
     while (vizPointsUtils::running) {
         auto cycleStartTime = std::chrono::steady_clock::now();
@@ -454,7 +454,7 @@ void vizPointsUtils::runOccupancyMapPipeline(const std::vector<int>& allowedCore
                 occupancyMapDataReadyCV.notify_one();
             }
 
-            std::cout << "[OccupancyMapPipeline] Function running okay. Frame ID: " << OMD_readBuffer->staticVoxels.size() << "\n";
+            //std::cout << "[OccupancyMapPipeline] Function running okay. Frame ID: " << OMD_readBuffer->staticVoxels.size() << "\n";
 
         } else {
 
@@ -490,7 +490,7 @@ void vizPointsUtils::runOccupancyMapViewer(const std::vector<int>& allowedCores)
     setThreadAffinity(allowedCores);
 
     // Define target cycle duration (200ms = 5Hz)
-    const auto targetCycleDuration = std::chrono::milliseconds(100);
+    const auto targetCycleDuration = std::chrono::milliseconds(200);
 
     // Initialize Open3D visualizer
     TopDownViewer viewer;
