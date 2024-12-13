@@ -56,6 +56,12 @@ vizPointsUtils::vizPointsUtils() {
             clusterConfig.similarityThreshold, clusterConfig.maxDistanceThreshold, clusterConfig.dt
         );
     }
+
+    // Initialize Open3D visualizer
+    vis.CreateVisualizerWindow("Top-Down View", 1000, 1000);
+
+    // Setup initial top-down view
+    SetupTopDownView(vis, 5000.0); // Adjust camera height to a positive value
     
 }
 
@@ -499,11 +505,7 @@ void vizPointsUtils::runOccupancyMapViewer(const std::vector<int>& allowedCores)
 
     TopDownViewer viewer;
 
-    // Initialize Open3D visualizer
-    vis.CreateVisualizerWindow("Top-Down View", 500, 500);
-
-    // Setup initial top-down view
-    SetupTopDownView(vis, 5000.0); // Adjust camera height to a positive value
+    
 
     // Main loop for rendering and updating the viewer
     while (vizPointsUtils::running) {
