@@ -491,7 +491,7 @@ void vizPointsUtils::runOccupancyMapPipeline(const std::vector<int>& allowedCore
 // -----------------------------------------------------------------------------
 
 void vizPointsUtils::runOccupancyMapViewer(const std::vector<int>& allowedCores, 
-                                            TopDownViewer viewer, open3d::visualization::Visualizer& vis) {
+                                            TopDownViewer& viewer, open3d::visualization::Visualizer& vis) {
     // Set thread affinity for optimal core usage
     setThreadAffinity(allowedCores);
 
@@ -515,7 +515,12 @@ void vizPointsUtils::runOccupancyMapViewer(const std::vector<int>& allowedCores,
         }
 
         // Clear existing geometries
-        vis.ClearGeometries();
+        try {
+            vis.ClearGeometries();
+        } catch (const std::exception& e) {
+            std::cerr << "Error clearing geometries: " << e.what() << std::endl;
+        }
+
 
         // Create voxel squares and the vehicle mesh
         auto static_squares = viewer.CreateVoxelSquares(localBuffer.staticVoxels, 
@@ -543,7 +548,12 @@ void vizPointsUtils::runOccupancyMapViewer(const std::vector<int>& allowedCores,
             break;
         }
 
-        vis.UpdateRender();
+        try {
+            vis.UpdateRender();
+        } catch (const std::exception& e) {
+            std::cerr << "Error in rendering: " << e.what() << std::endl;
+            vizPointsUtils::running = false;
+        }
 
         // Handle sleep and ensure consistent frame rate
         auto elapsedTime = std::chrono::steady_clock::now() - cycleStartTime;

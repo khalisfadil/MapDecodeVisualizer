@@ -348,7 +348,7 @@ class vizPointsUtils {
          * - If geometries fail to render, the visualization loop will terminate.
          */
         void runOccupancyMapViewer(const std::vector<int>& allowedCores, 
-                                            TopDownViewer viewer, open3d::visualization::Visualizer& vis);
+                                            TopDownViewer& viewer, open3d::visualization::Visualizer& vis);
 
         // -----------------------------------------------------------------------------
         /**
