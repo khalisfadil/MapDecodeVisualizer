@@ -178,6 +178,7 @@ void vizPointsUtils::startPointsListener(boost::asio::io_context& ioContext,
                 *P_writeBuffer = latestPoints;
                 std::swap(P_writeBuffer, P_readBuffer);
                 pointsDataReady = true;
+                std::cout << "[P_writeBuffer] numVal :" << latestPoints.numVal << std::endl;
                 std::cout << "[P_writeBuffer] numVal :" << P_writeBuffer->numVal << std::endl;
             }
             pointsDataReadyCV.notify_one();
@@ -264,6 +265,7 @@ void vizPointsUtils::startAttributesListener(boost::asio::io_context& ioContext,
                 *A_writeBuffer = latestAttributes;
                 std::swap(A_writeBuffer, A_readBuffer);
                 attributesDataReady = true;
+                std::cout << "[A_writeBuffer] numVal :" << latestAttributes.numVal << std::endl;
                 std::cout << "[A_writeBuffer] numVal :" << A_writeBuffer->numVal << std::endl;
             }
             attributesDataReadyCV.notify_one();
