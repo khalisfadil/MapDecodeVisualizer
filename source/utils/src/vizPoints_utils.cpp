@@ -161,12 +161,12 @@ void vizPointsUtils::startPointsListener(boost::asio::io_context& ioContext,
         // Initialize the UDP socket
         UDPSocket listener(ioContext, host, port, [&](const std::vector<uint8_t>& data) {
 
-            // {
-            //     std::lock_guard<std::mutex> consoleLock(consoleMutex);
-            //     auto now = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
-            //     std::cout << "[" << std::put_time(std::localtime(&now), "%F %T")
-            //               << "] [PointsListener] Received packet of size: " << data.size() << " bytes on port: " << port << std::endl;
-            // }
+            {
+                std::lock_guard<std::mutex> consoleLock(consoleMutex);
+                auto now = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
+                std::cout << "[" << std::put_time(std::localtime(&now), "%F %T")
+                          << "] [PointsListener] Received packet of size: " << data.size() << " bytes on port: " << port << std::endl;
+            }
 
             CallbackPoints::Points latestPoints;
             CallbackPoints callbackPoints;
@@ -178,7 +178,7 @@ void vizPointsUtils::startPointsListener(boost::asio::io_context& ioContext,
                 *P_writeBuffer = latestPoints;
                 std::swap(P_writeBuffer, P_readBuffer);
                 pointsDataReady = true;
-                std::cout << "[P_writeBuffer] numVal :" << latestPoints.numVal << std::endl;
+                std::cout << "[latestPoints] numVal :" << latestPoints.numVal << std::endl;
                 std::cout << "[P_writeBuffer] numVal :" << P_writeBuffer->numVal << std::endl;
             }
             pointsDataReadyCV.notify_one();
@@ -248,12 +248,12 @@ void vizPointsUtils::startAttributesListener(boost::asio::io_context& ioContext,
         // Initialize the UDP socket
         UDPSocket listener(ioContext, host, port, [&](const std::vector<uint8_t>& data) {
 
-            // {
-            //     std::lock_guard<std::mutex> consoleLock(consoleMutex);
-            //     auto now = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
-            //     std::cout << "[" << std::put_time(std::localtime(&now), "%F %T")
-            //               << "] [AttributesListener] Received packet of size: " << data.size() << " bytes on port: " << port << std::endl;
-            // }
+            {
+                std::lock_guard<std::mutex> consoleLock(consoleMutex);
+                auto now = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
+                std::cout << "[" << std::put_time(std::localtime(&now), "%F %T")
+                          << "] [AttributesListener] Received packet of size: " << data.size() << " bytes on port: " << port << std::endl;
+            }
 
             CallbackPoints::Points latestAttributes;
             CallbackPoints callbackPoints;
@@ -265,7 +265,7 @@ void vizPointsUtils::startAttributesListener(boost::asio::io_context& ioContext,
                 *A_writeBuffer = latestAttributes;
                 std::swap(A_writeBuffer, A_readBuffer);
                 attributesDataReady = true;
-                std::cout << "[A_writeBuffer] numVal :" << latestAttributes.numVal << std::endl;
+                std::cout << "[latestAttributes] numVal :" << latestAttributes.numVal << std::endl;
                 std::cout << "[A_writeBuffer] numVal :" << A_writeBuffer->numVal << std::endl;
             }
             attributesDataReadyCV.notify_one();
