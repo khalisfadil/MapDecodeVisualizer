@@ -86,6 +86,8 @@ void CallbackPoints::process(const std::vector<uint8_t>& data, Points& points) {
         std::cout << "[process] temp_maxSegm: "  << temp_maxSegm << std::endl;
         std::cout << "[process] currSegmIdx_: "  << currSegmIdx_ << std::endl;
         std::cout << "[process] temp_segm: "  << temp_segm << std::endl;
+        std::cout << "[process] pointsize: "  << data.size()- 73 << std::endl;
+        std::cout << "[process] temp_numSize: "  << temp_numXYZ * 12 << std::endl;
 
     }
 }
