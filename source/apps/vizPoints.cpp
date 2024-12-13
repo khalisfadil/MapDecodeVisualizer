@@ -76,9 +76,7 @@ int main() {
                                                 pointsHost, 
                                                 pointsPort, 
                                                 1393, 
-                                                std::vector<int>{8},
-                                                callbackPoints,
-                                                points);
+                                                std::vector<int>{8});
             }
         );
 
