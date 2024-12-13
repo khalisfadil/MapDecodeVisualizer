@@ -347,7 +347,7 @@ class vizPointsUtils {
          * - Ensure that the system supports Open3D visualization and required configurations (e.g., display settings).
          * - If geometries fail to render, the visualization loop will terminate.
          */
-        void runOccupancyMapViewer(const std::vector<int>& allowedCores, open3d::visualization::Visualizer& vis);
+        void runOccupancyMapViewer(const std::vector<int>& allowedCores);
 
         // -----------------------------------------------------------------------------
         /**
@@ -386,6 +386,8 @@ class vizPointsUtils {
          * - Camera settings may overwrite existing visualizer configurations.
          */
         void SetupTopDownView(open3d::visualization::Visualizer& vis, double cameraHeight);
+
+        open3d::visualization::Visualizer vis;
 
     // -----------------------------------------------------------------------------
     // Section: private Class vizPointsUtils

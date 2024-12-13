@@ -490,7 +490,7 @@ void vizPointsUtils::runOccupancyMapPipeline(const std::vector<int>& allowedCore
 // Section: runOccupancyMapViewer
 // -----------------------------------------------------------------------------
 
-void vizPointsUtils::runOccupancyMapViewer(const std::vector<int>& allowedCores, open3d::visualization::Visualizer& vis) {
+void vizPointsUtils::runOccupancyMapViewer(const std::vector<int>& allowedCores) {
     // Set thread affinity for optimal core usage
     setThreadAffinity(allowedCores);
 
