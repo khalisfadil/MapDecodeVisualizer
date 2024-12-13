@@ -85,16 +85,21 @@ void vizPointsUtils::SetupTopDownView(open3d::visualization::Visualizer& vis, do
     view_control.ConvertFromPinholeCameraParameters(camera_params);
 
     // Adjust zoom level
-    view_control.SetZoom(0.1); // 0.5 provides a wider view; adjust as needed (smaller = zoomed out)
+    view_control.SetZoom(1.0); // Higher value for zoom-out effect
+
+    // Adjust near and far clipping planes
+    view_control.SetConstantZNear(0.1);  // Near plane
+    view_control.SetConstantZFar(10000.0); // Far plane
 
     // Debug: Print extrinsics and zoom to verify
-    std::cout << "Camera extrinsics applied:\n" << camera_params.extrinsic_ << std::endl;
-    // std::cout << "Zoom level set to: " << view_control.GetZoom() << std::endl;
+    //std::cout << "Camera extrinsics applied:\n" << camera_params.extrinsic_ << std::endl;
+    //std::cout << "Zoom level set to: " << view_control.GetZoom() << std::endl;
 
     // Force a refresh of the visualizer
     vis.PollEvents();
     vis.UpdateRender();
 }
+
 
 // -----------------------------------------------------------------------------
 // Section: setThreadAffinity
@@ -344,7 +349,7 @@ void vizPointsUtils::runOccupancyMapPipeline(const std::vector<int>& allowedCore
     // Set thread affinity for performance optimization
     setThreadAffinity(allowedCores);
 
-    const auto targetCycleDuration = std::chrono::milliseconds(200); // Target 10 Hz processing rate
+    const auto targetCycleDuration = std::chrono::milliseconds(150); // Target 10 Hz processing rate
 
     while (vizPointsUtils::running) {
         auto cycleStartTime = std::chrono::steady_clock::now();
@@ -490,7 +495,7 @@ void vizPointsUtils::runOccupancyMapViewer(const std::vector<int>& allowedCores)
     setThreadAffinity(allowedCores);
 
     // Define target cycle duration (200ms = 5Hz)
-    const auto targetCycleDuration = std::chrono::milliseconds(200);
+    const auto targetCycleDuration = std::chrono::milliseconds(150);
 
     // Initialize Open3D visualizer
     TopDownViewer viewer;
@@ -498,7 +503,7 @@ void vizPointsUtils::runOccupancyMapViewer(const std::vector<int>& allowedCores)
     vis.CreateVisualizerWindow("Top-Down View", 500, 500);
 
     // Setup initial top-down view
-    SetupTopDownView(vis, 1000.0); // Adjust camera height to a positive value
+    SetupTopDownView(vis, 5000.0); // Adjust camera height to a positive value
 
     // Main loop for rendering and updating the viewer
     while (vizPointsUtils::running) {
@@ -551,6 +556,11 @@ void vizPointsUtils::runOccupancyMapViewer(const std::vector<int>& allowedCores)
 
         if (remainingSleepTime > std::chrono::milliseconds(0)) {
             std::this_thread::sleep_for(remainingSleepTime);
+            {
+                std::lock_guard<std::mutex> consoleLock(consoleMutex);
+                std::cout << "[OccupancyMapViewer] Processing Time: " 
+                          << std::chrono::duration_cast<std::chrono::milliseconds>(elapsedTime).count() << " ms\n";
+            }
         } else {
             std::lock_guard<std::mutex> consoleLock(consoleMutex);
             std::cerr << "Warning: [OccupancyMapViewer] Processing took longer than the target cycle duration.\n";
