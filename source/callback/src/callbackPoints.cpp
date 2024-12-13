@@ -14,8 +14,10 @@ CallbackPoints::CallbackPoints()
 
 void CallbackPoints::process(const std::vector<uint8_t>& data, Points& points) {
     // Check if the input data is valid
-    if (data.empty()) return;
-
+    if (data.empty()) {
+        std::cout << "[0] data.empty()"<< std::endl;
+        return;
+    }
     // Check the header byte to ensure data packet integrity
     if (data[0] == 0x53) { // Byte 0: Header byte
         
@@ -43,19 +45,28 @@ void CallbackPoints::process(const std::vector<uint8_t>& data, Points& points) {
         uint32_t temp_numXYZ;
         std::memcpy(&temp_numXYZ, &data[69], sizeof(uint32_t)); // Bytes 69 to 72
 
+        std::cout << "[a] temp_maxSegm: "  << temp_maxSegm << std::endl;
+        std::cout << "[a] temp_segm: "  << temp_segm << std::endl;
+
         // Handle a new frame
         if (temp_frameID != frameID_) {
+            std::cout << "[1] invoke 'temp_frameID != frameID_'"<< std::endl;
+            std::cout << "[c] temp_frameID: "  << temp_frameID << std::endl;
+            std::cout << "[c] frameID_: "  << frameID_ << std::endl;
+            std::cout << "[b] maxNumSegment_: "  << maxNumSegment_ << std::endl;
+            std::cout << "[b] currSegmIdx_-1: "  << currSegmIdx_-1 << std::endl;
+            std::cout << "[b] currSegmIdx_: "  << currSegmIdx_ << std::endl;
             // Finalize the previous frame if all segments are received
             if (maxNumSegment_ == currSegmIdx_-1) {
+                std::cout << "[2] invoke 'maxNumSegment_ == currSegmIdx_-1'"<< std::endl;
                 std::copy(receivedXYZ_.begin(), receivedXYZ_.begin() + receivedNumXYZ_, points.val.begin());
                 points.numVal = receivedNumXYZ_;
                 points.frameID = frameID_;
                 points.t = t_;
                 points.NED = NED_;
                 points.RPY = RPY_;
-                std::cout << "[2] invoke 'maxNumSegment_ == currSegmIdx_-1'"<< std::endl;
+                
             }
-
             // Reset internal states for the new frame
             NED_ << temp_ned[0], temp_ned[1], temp_ned[2];
             RPY_ << temp_rpy[0], temp_rpy[1], temp_rpy[2];
@@ -64,11 +75,13 @@ void CallbackPoints::process(const std::vector<uint8_t>& data, Points& points) {
             t_ = temp_t;
             maxNumSegment_ = temp_maxSegm;
             currSegmIdx_ = 0;
-            std::cout << "[1] invoke 'temp_frameID != frameID_'"<< std::endl;
         }
 
         // Validate packet size and process 3D points
         if (data.size() - 73 == temp_numXYZ * 12) {
+            std::cout << "[3] data.size() - 73 == temp_numXYZ * 12'"<< std::endl;
+            d::cout << "[d] pointsize: "  << data.size()- 73 << std::endl;
+            std::cout << "[d] temp_numSize: "  << temp_numXYZ * 12 << std::endl;
             currSegmIdx_++;
             uint32_t temp_offset = temp_segm * 110;
 
@@ -81,20 +94,7 @@ void CallbackPoints::process(const std::vector<uint8_t>& data, Points& points) {
             }
 
             receivedNumXYZ_ = temp_offset + temp_numXYZ;
-            std::cout << "[3] data.size() - 73 == temp_numXYZ * 12'"<< std::endl;
+            
         }
-        std::cout << "[a] temp_maxSegm: "  << temp_maxSegm << std::endl;
-        std::cout << "[a] temp_segm: "  << temp_segm << std::endl;
-        
-        std::cout << "[b] maxNumSegment_: "  << maxNumSegment_ << std::endl;
-        std::cout << "[b] currSegmIdx_-1: "  << currSegmIdx_-1 << std::endl;
-        std::cout << "[b] currSegmIdx_: "  << currSegmIdx_ << std::endl;
-
-        std::cout << "[c] temp_frameID: "  << temp_frameID << std::endl;
-        std::cout << "[c] frameID_: "  << frameID_ << std::endl;
-
-        std::cout << "[d] pointsize: "  << data.size()- 73 << std::endl;
-        std::cout << "[d] temp_numSize: "  << temp_numXYZ * 12 << std::endl;
-
     }
 }
