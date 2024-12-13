@@ -399,8 +399,6 @@ void vizPointsUtils::runOccupancyMapPipeline(const std::vector<int>& allowedCore
 
         if (matchedData.has_value()) {
 
-            std::cout << "[OccupancyMapPipeline] matchedData has value"  << std::endl;
-
             // Access the matched data
             const auto& [matchedPoints, matchedAttributes] = matchedData.value();
 
@@ -456,7 +454,7 @@ void vizPointsUtils::runOccupancyMapPipeline(const std::vector<int>& allowedCore
                 occupancyMapDataReadyCV.notify_one();
             }
 
-            // std::cout << "[OccupancyMapPipeline] Function running okay. Frame ID: " << localBuffer.frameID << "\n";
+            std::cout << "[OccupancyMapPipeline] Function running okay. Frame ID: " << OMD_readBuffer->staticVoxels.size() << "\n";
 
         } else {
 
