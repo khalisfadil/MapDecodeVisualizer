@@ -181,7 +181,7 @@ void vizPointsUtils::startPointsListener(boost::asio::io_context& ioContext,
                 //     }
                 //     std::cout << std::endl;
                 // std::cout << "[latestPoints] numVal :" << latestPoints.numVal << std::endl;
-                // std::cout << "[P_writeBuffer] numVal :" << P_writeBuffer->numVal << std::endl;
+                std::cout << "[P_writeBuffer] numVal :" << P_writeBuffer->numVal << std::endl;
             }
             pointsDataReadyCV.notify_one();
 

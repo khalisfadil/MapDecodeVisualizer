@@ -45,26 +45,11 @@ void CallbackPoints::process(const std::vector<uint8_t>& data, Points& points) {
         uint32_t temp_numXYZ;
         std::memcpy(&temp_numXYZ, &data[69], sizeof(uint32_t)); // Bytes 69 to 72
 
-        std::cout << "[1] temp_maxSegm: "  << temp_maxSegm << std::endl;
-        std::cout << "[1] temp_segm: "  << temp_segm << std::endl;
-
-        std::cout << "[2] temp_frameID: "  << temp_frameID << std::endl;
-        std::cout << "[2] frameID_: "  << frameID_ << std::endl;
-
         // Handle a new frame
         if (temp_frameID != frameID_) {
-            std::cout << "[3] invoke 'temp_frameID != frameID_'"<< std::endl;
-            
-            std::cout << "[4] maxNumSegment_: "  << maxNumSegment_ << std::endl;
-            std::cout << "[4] currSegmIdx_-1: "  << currSegmIdx_-1 << std::endl;
-            std::cout << "[4] currSegmIdx_: "  << currSegmIdx_ << std::endl;
 
-            if (currSegmIdx_ > maxNumSegment_) {
-                std::cerr << "[5] currSegmIdx_ exceeds maxNumSegment_: " << currSegmIdx_ << std::endl;
-            }
             // Finalize the previous frame if all segments are received
             if (maxNumSegment_ == currSegmIdx_-1) {
-                std::cout << "[6] invoke 'maxNumSegment_ == currSegmIdx_-1'"<< std::endl;
                 std::copy(receivedXYZ_.begin(), receivedXYZ_.begin() + receivedNumXYZ_, points.val.begin());
                 points.numVal = receivedNumXYZ_;
                 points.frameID = frameID_;
@@ -78,12 +63,9 @@ void CallbackPoints::process(const std::vector<uint8_t>& data, Points& points) {
             RPY_ << temp_rpy[0], temp_rpy[1], temp_rpy[2];
             receivedNumXYZ_ = 0;
             frameID_ = temp_frameID;
-            std::cout << "[7] Resetting frameID_ to temp_frameID for new frame" << frameID_ << std::endl;
             t_ = temp_t;
             maxNumSegment_ = temp_maxSegm;
             currSegmIdx_ = 0;
-            std::cout << "[7] Resetting currSegmIdx_ to 0 for new frame" << currSegmIdx_ << std::endl;
-
         }
 
         // Validate packet size and process 3D points
