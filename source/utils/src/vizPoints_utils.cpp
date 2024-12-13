@@ -64,40 +64,27 @@ vizPointsUtils::vizPointsUtils() {
 // -----------------------------------------------------------------------------
 
 void vizPointsUtils::SetupTopDownView(double cameraHeight) {
-    // Set background color to black
-    vis.GetRenderOption().background_color_ = Eigen::Vector3d(0.0, 0.0, 0.0);
-
-    auto& view_control = vis.GetViewControl();
-
-    // Retrieve current camera parameters
+    auto &view_control = vis.GetViewControl();
     open3d::camera::PinholeCameraParameters camera_params;
     view_control.ConvertToPinholeCameraParameters(camera_params);
 
-    // Build extrinsic matrix:
-    // 1) Start with identity
-    // 2) Translate camera up cameraHeight along Z
-    // 3) Rotate 180° about X so it faces down the -Z direction
     Eigen::Matrix4d extrinsic = Eigen::Matrix4d::Identity();
-    extrinsic(2, 3) = std::abs(cameraHeight);  // camera at (0,0,cameraHeight)
-    
-    // Rotate camera to look downward
+
+    // Place the camera at (0,0,cameraHeight)
+    extrinsic(2, 3) = cameraHeight;
+
+    // Rotate 180 degrees about X so camera faces downward (-Z)
     Eigen::Matrix3d R = Eigen::AngleAxisd(M_PI, Eigen::Vector3d::UnitX()).toRotationMatrix();
     extrinsic.block<3,3>(0,0) = R;
 
-    // Assign to camera_params
     camera_params.extrinsic_ = extrinsic;
 
-    // Apply updated parameters back to the visualizer
     view_control.ConvertFromPinholeCameraParameters(camera_params);
-
-    // Optional: Adjust zoom
     view_control.SetZoom(1.0);
-
-    // Adjust near/far planes
     view_control.SetConstantZNear(0.1);
     view_control.SetConstantZFar(10000.0);
 
-    // Refresh
+    // This ensures the new camera params are applied in the next render pass
     vis.PollEvents();
     vis.UpdateRender();
 }
@@ -503,9 +490,6 @@ void vizPointsUtils::runOccupancyMapViewer(const std::vector<int>& allowedCores)
     // Initialize Open3D visualizer
     vis.CreateVisualizerWindow("Top-Down View", 500, 500);
 
-    // Setup initial top-down view
-    SetupTopDownView(500.0); // Adjust camera height to a positive value
-
     // Main loop for rendering and updating the viewer
     while (vizPointsUtils::running) {
         auto cycleStartTime = std::chrono::steady_clock::now();
@@ -549,16 +533,17 @@ void vizPointsUtils::runOccupancyMapViewer(const std::vector<int>& allowedCores)
             break;
         }
 
-         if (!vis.PollEvents()) {
-            vizPointsUtils::running = false; // Exit if the user closes the window
-            break;
-        }
-
         try {
-            vis.UpdateRender();
+            // Setup top-down view
+            SetupTopDownView(500.0); // Adjust camera height to a positive value
         } catch (const std::exception& e) {
             std::cerr << "Error in rendering: " << e.what() << std::endl;
             vizPointsUtils::running = false;
+        }
+
+        if (!vis.PollEvents()) {
+            vizPointsUtils::running = false; // Exit if the user closes the window
+            break;
         }
 
         // Handle sleep and ensure consistent frame rate
