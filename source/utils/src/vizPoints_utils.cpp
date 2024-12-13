@@ -271,6 +271,8 @@ void vizPointsUtils::startAttributesListener(boost::asio::io_context& ioContext,
                 //     std::cout << std::endl;
                 // std::cout << "[latestAttributes] numVal :" << latestAttributes.numVal << std::endl;
                 // std::cout << "[A_writeBuffer] numVal :" << A_writeBuffer->numVal << std::endl;
+                std::cout << "[latestAttributes] numVal :" << latestAttributes.numVal << std::endl;
+                std::cout << "[A_writeBuffer] numVal :" << A_writeBuffer->numVal << std::endl;
             }
             attributesDataReadyCV.notify_one();
 
