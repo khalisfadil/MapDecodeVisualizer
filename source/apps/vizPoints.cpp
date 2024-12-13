@@ -54,12 +54,6 @@ int main() {
     sigaction(SIGINT, &sigIntHandler, nullptr);
     sigaction(SIGTERM, &sigIntHandler, nullptr);
 
-    // Initialize Open3D visualizer
-    myObject.vis.CreateVisualizerWindow("Top-Down View", 500, 500);
-
-    // Setup initial top-down view
-    myObject.SetupTopDownView(myObject.vis, 5000.0); // Adjust camera height to a positive value
-
     std::cout << "[Main] Listening to incoming UDP packets..." << std::endl;
 
      CallbackPoints::Points points;
