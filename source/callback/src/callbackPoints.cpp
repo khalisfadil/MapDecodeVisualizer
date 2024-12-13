@@ -82,4 +82,5 @@ void CallbackPoints::process(const std::vector<uint8_t>& data, Points& points) {
             receivedNumXYZ_ = temp_offset + temp_numXYZ;
         }
     }
+    std::cout << "[process] invoke process " << std::endl;
 }
