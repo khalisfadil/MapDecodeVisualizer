@@ -90,6 +90,10 @@ void CallbackPoints::process(const std::vector<uint8_t>& data, Points& points) {
             std::cout << "[Debug] Increment current currSegmIdx_"<< maxNumSegment_ << std::endl;
             std::cout << "[Debug] Before current currSegmIdx_"<< maxNumSegment_ - 1 << std::endl;
 
+            if (currSegmIdx_ > maxNumSegment_) {
+                std::cerr << "[Error] currSegmIdx_ exceeds maxNumSegment_: " << currSegmIdx_ << std::endl;
+            }
+
             uint32_t temp_offset = temp_segm * 110;
 
             Eigen::Vector3f temp_receivedXYZ;
