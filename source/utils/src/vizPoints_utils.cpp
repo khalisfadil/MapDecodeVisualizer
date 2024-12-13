@@ -161,12 +161,12 @@ void vizPointsUtils::startPointsListener(boost::asio::io_context& ioContext,
         // Initialize the UDP socket
         UDPSocket listener(ioContext, host, port, [&](const std::vector<uint8_t>& data) {
 
-            {
-                std::lock_guard<std::mutex> consoleLock(consoleMutex);
-                auto now = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
-                std::cout << "[" << std::put_time(std::localtime(&now), "%F %T")
-                          << "] [PointsListener] Received packet of size: " << data.size() << " bytes on port: " << port << std::endl;
-            }
+            // {
+            //     std::lock_guard<std::mutex> consoleLock(consoleMutex);
+            //     auto now = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
+            //     std::cout << "[" << std::put_time(std::localtime(&now), "%F %T")
+            //               << "] [PointsListener] Received packet of size: " << data.size() << " bytes on port: " << port << std::endl;
+            // }
 
             CallbackPoints::Points latestPoints;
             CallbackPoints callbackPoints;
@@ -246,12 +246,12 @@ void vizPointsUtils::startAttributesListener(boost::asio::io_context& ioContext,
         // Initialize the UDP socket
         UDPSocket listener(ioContext, host, port, [&](const std::vector<uint8_t>& data) {
 
-            {
-                std::lock_guard<std::mutex> consoleLock(consoleMutex);
-                auto now = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
-                std::cout << "[" << std::put_time(std::localtime(&now), "%F %T")
-                          << "] [AttributesListener] Received packet of size: " << data.size() << " bytes on port: " << port << std::endl;
-            }
+            // {
+            //     std::lock_guard<std::mutex> consoleLock(consoleMutex);
+            //     auto now = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
+            //     std::cout << "[" << std::put_time(std::localtime(&now), "%F %T")
+            //               << "] [AttributesListener] Received packet of size: " << data.size() << " bytes on port: " << port << std::endl;
+            // }
 
             CallbackPoints::Points latestAttributes;
             CallbackPoints callbackPoints;
@@ -352,7 +352,7 @@ void vizPointsUtils::runOccupancyMapPipeline(const std::vector<int>& allowedCore
             pointsDataReadyCV.wait(pLock, [this] { return this->pointsDataReady.load(); });
             localPointsBuffer = *P_readBuffer; // Copy the read buffer
             pointsDataReady = false; // Reset dataReady flag
-
+            std::cout << "[localPointsBuffer] numVal :" << localPointsBuffer.numVal << std::endl;
         }
 
         {   
@@ -361,7 +361,7 @@ void vizPointsUtils::runOccupancyMapPipeline(const std::vector<int>& allowedCore
             attributesDataReadyCV.wait(attLock, [this] { return this->attributesDataReady.load(); });
             localAttributessBuffer = *A_readBuffer; // Copy the read buffer
             attributesDataReady = false; // Reset dataReady flag
-
+            std::cout << "[localAttributessBuffer] numVal :" << localAttributessBuffer.numVal << std::endl;
         }
 
         std::optional<std::pair<CallbackPoints::Points, CallbackPoints::Points>> matchedData;
@@ -447,7 +447,7 @@ void vizPointsUtils::runOccupancyMapPipeline(const std::vector<int>& allowedCore
                 occupancyMapDataReadyCV.notify_one();
             }
 
-            std::cout << "[OccupancyMapPipeline] Function running okay. Frame ID: " << localBuffer.frameID << "\n";
+            // std::cout << "[OccupancyMapPipeline] Function running okay. Frame ID: " << localBuffer.frameID << "\n";
 
         } else {
 
