@@ -129,28 +129,34 @@ std::shared_ptr<open3d::geometry::TriangleMesh> TopDownViewer::CreateVoxelSquare
 // Section: CreateVehicleMesh
 // -----------------------------------------------------------------------------
 
-std::shared_ptr<open3d::geometry::TriangleMesh> TopDownViewer::CreateVehicleMesh(float markersize, double yaw_rad) {
+std::shared_ptr<open3d::geometry::TriangleMesh> TopDownViewer::CreateVehicleMesh(float markersize, double yaw_ned) {
     if (markersize <= 0) {
         throw std::invalid_argument("Marker size must be positive.");
     }
 
-    // Define a scaling factor to increase the triangle size
-    double scale_factor = 3.0; // Increase the overall size (adjust as needed)
+    // Define a scaling factor for the triangle size
+    double scale_factor = 3.0; // Increase overall size (adjust as needed)
 
-    // Adjust vertices to make the bottom line and side lines more proportionate
-    Eigen::Vector3d front_vertex(0.0, scale_factor * markersize / 2.0, 0.0); // Forward
-    Eigen::Vector3d rear_left_vertex(-scale_factor * markersize / 3.0, -scale_factor * markersize / 2.0, 0.0); // Rear-left
-    Eigen::Vector3d rear_right_vertex(scale_factor * markersize / 3.0, -scale_factor * markersize / 2.0, 0.0); // Rear-right
+    // 0 yaw = facing "north" along +Y in our top-down map
+    // We'll interpret 'front' as +Y at zero yaw.
+    Eigen::Vector3d front_vertex(0.0, scale_factor * markersize / 2.0, 0.0);          // Forward
+    Eigen::Vector3d rear_left_vertex(-scale_factor * markersize / 3.0, -scale_factor * markersize / 2.0, 0.0); 
+    Eigen::Vector3d rear_right_vertex(scale_factor * markersize / 3.0, -scale_factor * markersize / 2.0, 0.0);
 
-    // Create rotation matrix for yaw
+    // --- Convert from NED yaw (clockwise from North) to standard Z-up yaw (counterclockwise from +Y) ---
+    // A positive NED yaw rotates clockwise, but standard 2D rotation is counterclockwise in XY-plane.
+    // So we flip the sign:
+    double local_yaw = -yaw_ned;
+
+    // Create rotation matrix for local_yaw
     Eigen::Matrix3d rotation_matrix;
-    rotation_matrix << std::cos(yaw_rad), -std::sin(yaw_rad), 0.0,
-                       std::sin(yaw_rad),  std::cos(yaw_rad), 0.0,
-                       0.0,                0.0,               1.0;
+    rotation_matrix << std::cos(local_yaw), -std::sin(local_yaw), 0.0,
+                       std::sin(local_yaw),  std::cos(local_yaw), 0.0,
+                       0.0,                  0.0,                 1.0;
 
-    // Rotate vertices based on yaw
-    front_vertex = rotation_matrix * front_vertex;
-    rear_left_vertex = rotation_matrix * rear_left_vertex;
+    // Rotate vertices
+    front_vertex      = rotation_matrix * front_vertex;
+    rear_left_vertex  = rotation_matrix * rear_left_vertex;
     rear_right_vertex = rotation_matrix * rear_right_vertex;
 
     // Create the triangle mesh
@@ -160,11 +166,11 @@ std::shared_ptr<open3d::geometry::TriangleMesh> TopDownViewer::CreateVehicleMesh
         rear_left_vertex,
         rear_right_vertex
     };
-    vehicle_mesh->triangles_ = {{0, 1, 2}}; // Single triangle
+    vehicle_mesh->triangles_ = {{0, 1, 2}}; // single triangle
 
-    // Assign a uniform green color to the vehicle
+    // Uniform green color for all vertices
     vehicle_mesh->vertex_colors_ = {
-        {0.0, 1.0, 0.0}, // green color
+        {0.0, 1.0, 0.0},
         {0.0, 1.0, 0.0},
         {0.0, 1.0, 0.0}
     };

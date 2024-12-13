@@ -531,7 +531,7 @@ void vizPointsUtils::runOccupancyMapViewer(const std::vector<int>& allowedCores)
                                                         localBuffer.occupancyColors, 
                                                         mapConfig.resolution);
 
-        auto vehicle_mesh = viewer.CreateVehicleMesh(2.0, localBuffer.orientation.z()*-1);
+        auto vehicle_mesh = viewer.CreateVehicleMesh(5.0, localBuffer.orientation.z());
 
         // Add geometries to the visualizer
         if (!vis.AddGeometry(static_squares)) {
@@ -548,7 +548,7 @@ void vizPointsUtils::runOccupancyMapViewer(const std::vector<int>& allowedCores)
 
         try {
             // Setup top-down view
-            SetupTopDownView(500.0); // Adjust camera height to a positive value
+            SetupTopDownView(300.0); // Adjust camera height to a positive value
         } catch (const std::exception& e) {
             std::cerr << "Error in rendering: " << e.what() << std::endl;
             vizPointsUtils::running = false;
