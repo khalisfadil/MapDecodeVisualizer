@@ -80,17 +80,17 @@ int main() {
             }
         );
 
-        // Start attributes Listener using the static method
-        boost::asio::io_context ioContextAttributes;
-        threads.emplace_back(
-            [&]() { 
-                myObject.startAttributesListener(ioContextAttributes,
-                                                    attributesHost, 
-                                                    attributesPort, 
-                                                    1393, 
-                                                    std::vector<int>{9});
-            }
-        );
+        // // Start attributes Listener using the static method
+        // boost::asio::io_context ioContextAttributes;
+        // threads.emplace_back(
+        //     [&]() { 
+        //         myObject.startAttributesListener(ioContextAttributes,
+        //                                             attributesHost, 
+        //                                             attributesPort, 
+        //                                             1393, 
+        //                                             std::vector<int>{9});
+        //     }
+        // );
 
         // // Start Processing (10 Hz)
         // threads.emplace_back([&]() {
@@ -111,7 +111,7 @@ int main() {
 
         // Stop IO contexts
         ioContextPoints.stop();
-        ioContextAttributes.stop();
+        //ioContextAttributes.stop();
 
         // Join all threads
         for (auto& thread : threads) {
