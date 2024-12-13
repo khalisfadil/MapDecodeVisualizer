@@ -63,43 +63,44 @@ vizPointsUtils::vizPointsUtils() {
 // Section: runOccupancyMapViewer
 // -----------------------------------------------------------------------------
 
-void vizPointsUtils::SetupTopDownView(open3d::visualization::Visualizer& vis, double cameraHeight) {
-    // Set the background color to black
+void vizPointsUtils::SetupTopDownView(double cameraHeight) {
+    // Set background color to black
     vis.GetRenderOption().background_color_ = Eigen::Vector3d(0.0, 0.0, 0.0);
 
-    // Access the ViewControl
     auto& view_control = vis.GetViewControl();
 
-    // Get the current camera parameters
+    // Retrieve current camera parameters
     open3d::camera::PinholeCameraParameters camera_params;
     view_control.ConvertToPinholeCameraParameters(camera_params);
 
-    // Correct extrinsics: Position the camera at (0, 0, cameraHeight) looking at the origin
-    camera_params.extrinsic_ <<
-        1, 0, 0, 0,                  // X-axis
-        0, 1, 0, 0,                  // Y-axis
-        0, 0, 1, std::abs(cameraHeight), // Z-axis (camera positioned at height)
-        0, 0, 0, 1;                  // Homogeneous coordinates
+    // Build extrinsic matrix:
+    // 1) Start with identity
+    // 2) Translate camera up cameraHeight along Z
+    // 3) Rotate 180° about X so it faces down the -Z direction
+    Eigen::Matrix4d extrinsic = Eigen::Matrix4d::Identity();
+    extrinsic(2, 3) = std::abs(cameraHeight);  // camera at (0,0,cameraHeight)
+    
+    // Rotate camera to look downward
+    Eigen::Matrix3d R = Eigen::AngleAxisd(M_PI, Eigen::Vector3d::UnitX()).toRotationMatrix();
+    extrinsic.block<3,3>(0,0) = R;
 
-    // Apply the modified camera parameters
+    // Assign to camera_params
+    camera_params.extrinsic_ = extrinsic;
+
+    // Apply updated parameters back to the visualizer
     view_control.ConvertFromPinholeCameraParameters(camera_params);
 
-    // Adjust zoom level
-    view_control.SetZoom(1.0); // Higher value for zoom-out effect
+    // Optional: Adjust zoom
+    view_control.SetZoom(1.0);
 
-    // Adjust near and far clipping planes
-    view_control.SetConstantZNear(0.1);  // Near plane
-    view_control.SetConstantZFar(10000.0); // Far plane
+    // Adjust near/far planes
+    view_control.SetConstantZNear(0.1);
+    view_control.SetConstantZFar(10000.0);
 
-    // Debug: Print extrinsics and zoom to verify
-    //std::cout << "Camera extrinsics applied:\n" << camera_params.extrinsic_ << std::endl;
-    //std::cout << "Zoom level set to: " << view_control.GetZoom() << std::endl;
-
-    // Force a refresh of the visualizer
+    // Refresh
     vis.PollEvents();
     vis.UpdateRender();
 }
-
 
 // -----------------------------------------------------------------------------
 // Section: setThreadAffinity
@@ -500,10 +501,10 @@ void vizPointsUtils::runOccupancyMapViewer(const std::vector<int>& allowedCores)
     TopDownViewer viewer;
 
     // Initialize Open3D visualizer
-    vis.CreateVisualizerWindow("Top-Down View", 1000, 1000);
+    vis.CreateVisualizerWindow("Top-Down View", 500, 500);
 
     // Setup initial top-down view
-    SetupTopDownView(vis, 5000.0); // Adjust camera height to a positive value
+    SetupTopDownView(500.0); // Adjust camera height to a positive value
 
     // Main loop for rendering and updating the viewer
     while (vizPointsUtils::running) {

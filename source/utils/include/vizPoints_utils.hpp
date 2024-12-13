@@ -385,7 +385,7 @@ class vizPointsUtils {
          * - Ensure that the `vis` object is properly initialized before calling this function.
          * - Camera settings may overwrite existing visualizer configurations.
          */
-        void SetupTopDownView(open3d::visualization::Visualizer& vis, double cameraHeight);
+        void SetupTopDownView(double cameraHeight);
 
         open3d::visualization::Visualizer vis;
 
