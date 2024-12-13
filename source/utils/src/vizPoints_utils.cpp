@@ -160,7 +160,7 @@ void vizPointsUtils::startPointsListener(boost::asio::io_context& ioContext,
     try {
         // Initialize the UDP socket
         UDPSocket listener(ioContext, host, port, [&](const std::vector<uint8_t>& data) {
-
+            
             // {
             //     std::lock_guard<std::mutex> consoleLock(consoleMutex);
             //     auto now = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
@@ -170,11 +170,12 @@ void vizPointsUtils::startPointsListener(boost::asio::io_context& ioContext,
 
             CallbackPoints::Points latestPoints;
             CallbackPoints callbackPoints;
+            callbackPoints.process(data, latestPoints);
 
             // Swap buffers atomically
             {
                 std::lock_guard<std::mutex> pLock(pointsMutex);
-                callbackPoints.process(data, latestPoints);
+                //callbackPoints.process(data, latestPoints);
                 *P_writeBuffer = latestPoints;
                 std::swap(P_writeBuffer, P_readBuffer);
                 pointsDataReady = true;
