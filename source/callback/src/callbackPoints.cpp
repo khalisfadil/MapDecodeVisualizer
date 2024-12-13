@@ -80,7 +80,7 @@ void CallbackPoints::process(const std::vector<uint8_t>& data, Points& points) {
         // Validate packet size and process 3D points
         if (data.size() - 73 == temp_numXYZ * 12) {
             std::cout << "[3] data.size() - 73 == temp_numXYZ * 12'"<< std::endl;
-            d::cout << "[d] pointsize: "  << data.size()- 73 << std::endl;
+            std::cout << "[d] pointsize: "  << data.size()- 73 << std::endl;
             std::cout << "[d] temp_numSize: "  << temp_numXYZ * 12 << std::endl;
             currSegmIdx_++;
             uint32_t temp_offset = temp_segm * 110;
