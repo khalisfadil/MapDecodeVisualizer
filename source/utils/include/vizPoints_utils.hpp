@@ -194,9 +194,7 @@ class vizPointsUtils {
                                     const std::string& host, 
                                     uint16_t port,
                                     uint32_t bufferSize, 
-                                    const std::vector<int>& allowedCores,
-                                    CallbackPoints& callbackPoints, 
-                                    CallbackPoints::Points& points);
+                                    const std::vector<int>& allowedCores);
 
         // -----------------------------------------------------------------------------
         /**
@@ -654,5 +652,11 @@ class vizPointsUtils {
          */
 
         std::mutex dequeMutex;
+
+        CallbackPoints callbackPointsProcessor;
+        CallbackPoints::Points latestPoints;
+        
+        CallbackPoints callbackAttributesProcessor;
+        CallbackPoints::Points latestAttributes;
 
 };

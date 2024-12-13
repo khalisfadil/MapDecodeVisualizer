@@ -147,9 +147,7 @@ void vizPointsUtils::startPointsListener(boost::asio::io_context& ioContext,
                                             const std::string& host, 
                                             uint16_t port,
                                             uint32_t bufferSize, 
-                                            const std::vector<int>& allowedCores,
-                                            CallbackPoints& callbackPoints, 
-                                            CallbackPoints::Points& points) {
+                                            const std::vector<int>& allowedCores) {
 
     setThreadAffinity(allowedCores);
     
@@ -173,8 +171,8 @@ void vizPointsUtils::startPointsListener(boost::asio::io_context& ioContext,
             // Swap buffers atomically
             {
                 std::lock_guard<std::mutex> pLock(pointsMutex);
-                callbackPoints.process(data, points);
-                *P_writeBuffer = points;
+                callbackPointsProcessor.process(data, latestPoints);
+                *P_writeBuffer = latestPoints;
                 std::swap(P_writeBuffer, P_readBuffer);
                 pointsDataReady = true;
                 // std::cout << "[PointsListener] Data (first 10 bytes): ";
@@ -259,13 +257,10 @@ void vizPointsUtils::startAttributesListener(boost::asio::io_context& ioContext,
             //               << "] [AttributesListener] Received packet of size: " << data.size() << " bytes on port: " << port << std::endl;
             // }
 
-            CallbackPoints::Points latestAttributes;
-            CallbackPoints callbackPoints;
-
             // Swap buffers atomically
             {
                 std::lock_guard<std::mutex> aLock(attributesMutex);
-                callbackPoints.process(data, latestAttributes);
+                callbackAttributesProcessor.process(data, latestAttributes);
                 *A_writeBuffer = latestAttributes;
                 std::swap(A_writeBuffer, A_readBuffer);
                 attributesDataReady = true;
