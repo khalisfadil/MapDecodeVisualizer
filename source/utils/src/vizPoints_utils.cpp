@@ -178,6 +178,7 @@ void vizPointsUtils::startPointsListener(boost::asio::io_context& ioContext,
                 *P_writeBuffer = latestPoints;
                 std::swap(P_writeBuffer, P_readBuffer);
                 pointsDataReady = true;
+                std::cout << "[P_writeBuffer] numVal :" << P_writeBuffer->numVal << std::endl;
             }
             pointsDataReadyCV.notify_one();
 
@@ -263,6 +264,7 @@ void vizPointsUtils::startAttributesListener(boost::asio::io_context& ioContext,
                 *A_writeBuffer = latestAttributes;
                 std::swap(A_writeBuffer, A_readBuffer);
                 attributesDataReady = true;
+                std::cout << "[A_writeBuffer] numVal :" << A_writeBuffer->numVal << std::endl;
             }
             attributesDataReadyCV.notify_one();
 
@@ -352,7 +354,7 @@ void vizPointsUtils::runOccupancyMapPipeline(const std::vector<int>& allowedCore
             pointsDataReadyCV.wait(pLock, [this] { return this->pointsDataReady.load(); });
             localPointsBuffer = *P_readBuffer; // Copy the read buffer
             pointsDataReady = false; // Reset dataReady flag
-            std::cout << "[localPointsBuffer] numVal :" << localPointsBuffer.numVal << std::endl;
+            std::cout << "[P_readBuffer] numVal :" << P_readBuffer->numVal << std::endl;
         }
 
         {   
@@ -361,7 +363,7 @@ void vizPointsUtils::runOccupancyMapPipeline(const std::vector<int>& allowedCore
             attributesDataReadyCV.wait(attLock, [this] { return this->attributesDataReady.load(); });
             localAttributessBuffer = *A_readBuffer; // Copy the read buffer
             attributesDataReady = false; // Reset dataReady flag
-            std::cout << "[localAttributessBuffer] numVal :" << localAttributessBuffer.numVal << std::endl;
+            std::cout << "[A_readBuffer] numVal :" << A_readBuffer->numVal << std::endl;
         }
 
         std::optional<std::pair<CallbackPoints::Points, CallbackPoints::Points>> matchedData;
