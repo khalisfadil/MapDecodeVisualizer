@@ -53,6 +53,7 @@ void CallbackPoints::process(const std::vector<uint8_t>& data, Points& points) {
                 points.t = t_;
                 points.NED = NED_;
                 points.RPY = RPY_;
+                std::cout << "[process] Parsed numVal: " << points.numVal << std::endl;
             }
 
             // Reset internal states for the new frame
