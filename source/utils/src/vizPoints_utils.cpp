@@ -246,12 +246,12 @@ void vizPointsUtils::startAttributesListener(boost::asio::io_context& ioContext,
         // Initialize the UDP socket
         UDPSocket listener(ioContext, host, port, [&](const std::vector<uint8_t>& data) {
 
-            // {
-            //     std::lock_guard<std::mutex> lock(consoleMutex);
-            //     auto now = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
-            //     std::cout << "[" << std::put_time(std::localtime(&now), "%F %T")
-            //               << "] Received packet of size: " << data.size() << " bytes on port: " << port << std::endl;
-            // }
+            {
+                std::lock_guard<std::mutex> consoleLock(consoleMutex);
+                auto now = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
+                std::cout << "[" << std::put_time(std::localtime(&now), "%F %T")
+                          << "] Received packet of size: " << data.size() << " bytes on port: " << port << std::endl;
+            }
 
             CallbackPoints::Points latestAttributes;
             CallbackPoints callbackPoints;

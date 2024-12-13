@@ -89,17 +89,17 @@ int main() {
             }
         );
 
-        // Start Processing (10 Hz)
-        threads.emplace_back([&]() {
-            myObject.runOccupancyMapPipeline(std::vector<int>{0, 1, 2, 3});
-            }
-        );
+        // // Start Processing (10 Hz)
+        // threads.emplace_back([&]() {
+        //     myObject.runOccupancyMapPipeline(std::vector<int>{0, 1, 2, 3});
+        //     }
+        // );
 
-        // Start Processing (10 Hz)
-        threads.emplace_back([&]() {
-            myObject.runOccupancyMapViewer(std::vector<int>{4, 5, 6, 7});
-            }
-        );
+        // // Start Processing (10 Hz)
+        // threads.emplace_back([&]() {
+        //     myObject.runOccupancyMapViewer(std::vector<int>{4, 5, 6, 7});
+        //     }
+        // );
 
         // Monitor signal and clean up
         while (vizPointsUtils::running) {
