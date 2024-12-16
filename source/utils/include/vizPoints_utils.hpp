@@ -33,6 +33,9 @@
 
 #include <boost/asio.hpp>
 #include <boost/lockfree/spsc_queue.hpp>
+#include <boost/lockfree/queue.hpp>
+#include <boost/lockfree/stack.hpp>
+
 
 #include <optional>
 #include <mutex>

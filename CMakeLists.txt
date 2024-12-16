@@ -23,7 +23,7 @@ cmake_policy(SET CMP0072 NEW) # OpenGL handling
 set(Open3D_DIR "/usr/local/lib/cmake/Open3D/") # Ensure correct directory
 set(TBB_DIR "/usr/lib/x86_64-linux-gnu/cmake/TBB") # Ensure correct directory
 find_package(Open3D REQUIRED)
-find_package(Boost 1.83 REQUIRED COMPONENTS system lockfree)
+find_package(Boost 1.83 REQUIRED COMPONENTS system)
 find_package(TBB REQUIRED)
 find_package(Eigen3 3.4 REQUIRED NO_MODULE)
 find_package(PCL 1.14 REQUIRED)
