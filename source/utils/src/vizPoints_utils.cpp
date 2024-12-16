@@ -35,7 +35,7 @@ std::condition_variable vizPointsUtils::queueCV;  // Define the condition variab
 
 boost::lockfree::spsc_queue<CallbackPoints::Points, boost::lockfree::capacity<128>> vizPointsUtils::pointsRingBuffer;
 
-boost::lockfree::spsc_queue<vizPointsUtils::OccupancyMapData, boost::lockfree::capacity<128>> occMapDataRingBuffer;
+boost::lockfree::spsc_queue<vizPointsUtils::OccupancyMapData, boost::lockfree::capacity<128>>  vizPointsUtils::occMapDataRingBuffer;
 
 // -----------------------------------------------------------------------------
 // Section: Constructor
