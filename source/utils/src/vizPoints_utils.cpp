@@ -134,6 +134,11 @@ void vizPointsUtils::startPointsListener(boost::asio::io_context& ioContext,
             // Decode raw bytes into a high-level representation
             callbackPointsProcessor.process(data, decodedPoints);
 
+            {
+                std::lock_guard<std::mutex> pLock(pointsMutex);
+                 std::cout << "[PointsListener] numVal :" << decodedPoints.numVal << std::endl;
+            }
+
             if (decodedPoints.frameID != 0 && decodedPoints.frameID != pointListenerFrameIDTracker){
 
                 pointListenerFrameIDTracker = decodedPoints.frameID;
@@ -607,8 +612,11 @@ void vizPointsUtils::runOccupancyMapPipeline(const std::vector<int>& allowedCore
             if (!vizPointsUtils::occMapDataRingBuffer.push(localOccupancyMapData)) {
                 // If full, we drop the data and log an error/warning
                 std::lock_guard<std::mutex> consoleLock(consoleMutex);
-                std::cerr << "[OccupancyMapPipeline2] Ring buffer full; decoded points dropped!\n";
+                std::cerr << "[OccupancyMapPipeline] Ring buffer full. Decoded points dropped!\n";
             }
+        }else{
+            std::lock_guard<std::mutex> consoleLock(consoleMutex);
+            std::cerr << "[OccupancyMapPipeline] Static Voxel None.\n";
         }
         
         // Timing and sleep management
