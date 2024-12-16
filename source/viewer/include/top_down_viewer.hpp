@@ -22,6 +22,7 @@
 #pragma once
 
 #include <open3d/Open3D.h>
+#include <open3d/geometry/TriangleMesh.h>
 #include <open3d/visualization/visualizer/Visualizer.h>
 
 #include <Eigen/Dense>

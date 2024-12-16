@@ -54,7 +54,6 @@ void CallbackPoints::process(const std::vector<uint8_t>& data, Points& points) {
                 points.t = t_;
                 points.NED = NED_;
                 points.RPY = RPY_;
-                
             }
             // Reset internal states for the new frame
             NED_ << temp_ned[0], temp_ned[1], temp_ned[2];
@@ -67,7 +66,9 @@ void CallbackPoints::process(const std::vector<uint8_t>& data, Points& points) {
         }
 
         // Validate packet size and process 3D points
-        if (data.size() - 73 == temp_numXYZ * 12) {
+        if (data.size() - 73 == temp_numXYZ * 12 && temp_segm != segmentTracker) {
+
+            segmentTracker = temp_segm;
             currSegmIdx_++;
 
             uint32_t temp_offset = temp_segm * 110;

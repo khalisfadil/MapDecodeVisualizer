@@ -151,4 +151,6 @@ class CallbackPoints {
          * the frame relative to a fixed reference.
          */
         Eigen::Vector3d RPY_;
+
+        uint32_t segmentTracker;
 };
