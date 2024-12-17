@@ -804,9 +804,10 @@ class vizPointsUtils {
         
         // -----------------------------------------------------------------------------
          
-        uint32_t pointListenerFrameIDTracker = 0;
 
         CallbackPoints::Points localPoints;
+
+        OccupancyMapData localOccMapDataBuffer;
 
         // -----------------------------------------------------------------------------
         /**
@@ -821,4 +822,5 @@ class vizPointsUtils {
 
 
         CallbackPoints::Points storedDecodedPoints;
+        
 };

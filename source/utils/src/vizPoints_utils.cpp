@@ -668,13 +668,15 @@ void vizPointsUtils::runOccupancyMapViewer(const std::vector<int>& allowedCores)
     while (vizPointsUtils::running) {
         auto cycleStartTime = std::chrono::steady_clock::now();
 
-        OccupancyMapData localOccMapDataBuffer;
         // Get the current size of the ring buffer (number of items to process in this cycle)
         size_t itemsToProcess = vizPointsUtils::occMapDataRingBuffer.read_available();
 
-        for (size_t i = 0; i < itemsToProcess; ++i) {
-            if (vizPointsUtils::occMapDataRingBuffer.pop(localOccMapDataBuffer)) {
+        if (itemsToProcess > 1){
+
+            for (size_t i = 0; i < itemsToProcess; ++i) {
+                if (vizPointsUtils::occMapDataRingBuffer.pop(localOccMapDataBuffer)) {
                 // Keep updating localPoints with the current item
+                }
             }
         }
 
