@@ -636,12 +636,12 @@ void vizPointsUtils::runOccupancyMapPipeline(const std::vector<int>& allowedCore
             std::this_thread::sleep_for(remainingSleepTime);
             {
                 std::lock_guard<std::mutex> consoleLock(consoleMutex);
-                std::cout << "[OccupancyMapPipeline2] Processing Time: " 
+                std::cout << "[OccupancyMapPipeline] Processing Time: " 
                           << std::chrono::duration_cast<std::chrono::milliseconds>(elapsedTime).count() << " ms\n";
             }
         } else {
             std::lock_guard<std::mutex> consoleLock(consoleMutex);
-            std::cout << "Warning: [OccupancyMapPipeline2] Processing took longer than 100 ms. Time: " 
+            std::cout << "Warning: [OccupancyMapPipeline] Processing took longer than 100 ms. Time: " 
                       << std::chrono::duration_cast<std::chrono::milliseconds>(elapsedTime).count()
                       << " ms. Skipping sleep.\n";
         }
