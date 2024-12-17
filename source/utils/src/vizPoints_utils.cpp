@@ -657,7 +657,7 @@ void vizPointsUtils::runOccupancyMapViewer(const std::vector<int>& allowedCores)
     setThreadAffinity(allowedCores);
 
     // Define target cycle duration (200ms = 5Hz)
-    const auto targetCycleDuration = std::chrono::milliseconds(200);
+    const auto targetCycleDuration = std::chrono::milliseconds(100);
 
     TopDownViewer viewer;
 
@@ -752,7 +752,7 @@ void vizPointsUtils::runOccupancyMapViewer2(const std::vector<int>& allowedCores
     setThreadAffinity(allowedCores);
 
     // Define target cycle duration (200ms = 5Hz)
-    const auto targetCycleDuration = std::chrono::milliseconds(200);
+    const auto targetCycleDuration = std::chrono::milliseconds(100);
 
     TopDownViewer viewer;
 
