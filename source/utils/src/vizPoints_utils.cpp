@@ -576,7 +576,7 @@ void vizPointsUtils::runOccupancyMapPipeline(const std::vector<int>& allowedCore
         std::vector<Eigen::Vector3f> pointCloud(localPoints.val.begin(), localPoints.val.begin() + localPoints.numVal);
 
         const float distanceThreshold = 30.0f; // 5 meters
-        pointCloud = filterPointsBeyondThreshold(pointCloud, distanceThreshold);
+        pointCloud = filterPointsBeyondThreshold(pointCloud, localPoints.NED.cast<float>(), distanceThreshold);
         uint32_t sizePointCloud = pointCloud.size();
         
         std::vector<float> intensity(sizePointCloud);
@@ -945,7 +945,11 @@ void vizPointsUtils::SetupTiltedTopDownView(double cameraHeight, double tiltAngl
 // Section: filterPointsBeyondThreshold
 // -----------------------------------------------------------------------------
 
-std::vector<Eigen::Vector3f> vizPointsUtils::filterPointsBeyondThreshold(const std::vector<Eigen::Vector3f>& inputCloud, float distanceThreshold) {
+std::vector<Eigen::Vector3f> vizPointsUtils::filterPointsBeyondThreshold(
+    const std::vector<Eigen::Vector3f>& inputCloud, 
+    const Eigen::Vector3f& vehiclePosition, // Vehicle position in NED frame
+    float distanceThreshold
+) {
     // Use concurrent vector for thread-safe insertion during parallel processing
     tbb::concurrent_vector<Eigen::Vector3f> filteredCloud;
 
@@ -953,9 +957,10 @@ std::vector<Eigen::Vector3f> vizPointsUtils::filterPointsBeyondThreshold(const s
     tbb::parallel_for(tbb::blocked_range<size_t>(0, inputCloud.size()), 
         [&](const tbb::blocked_range<size_t>& range) {
             for (size_t i = range.begin(); i < range.end(); ++i) {
-                float distance = inputCloud[i].norm(); // Compute Euclidean distance
+                // Compute distance of the point to the vehicle position
+                float distance = (inputCloud[i] - vehiclePosition).norm(); // Euclidean distance
                 if (distance > distanceThreshold) {
-                    filteredCloud.push_back(inputCloud[i]);
+                    filteredCloud.push_back(inputCloud[i]); // Add to filtered cloud
                 }
             }
         }

@@ -818,8 +818,9 @@ class vizPointsUtils {
          * @return std::vector<Eigen::Vector3f> Filtered point cloud containing only points
          *         beyond the specified distance.
          */
-        std::vector<Eigen::Vector3f> filterPointsBeyondThreshold(const std::vector<Eigen::Vector3f>& inputCloud, float distanceThreshold);
-
+        std::vector<Eigen::Vector3f> filterPointsBeyondThreshold(const std::vector<Eigen::Vector3f>& inputCloud, 
+                                                                    const Eigen::Vector3f& vehiclePosition, // Vehicle position in NED frame
+                                                                    float distanceThreshold);
 
         CallbackPoints::Points storedDecodedPoints;
         
