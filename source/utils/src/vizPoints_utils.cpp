@@ -553,7 +553,7 @@ void vizPointsUtils::runOccupancyMapPipeline(const std::vector<int>& allowedCore
     // Set thread affinity for performance optimization
     setThreadAffinity(allowedCores);
 
-    const auto targetCycleDuration = std::chrono::milliseconds(200); // Target 10 Hz processing rate
+    const auto targetCycleDuration = std::chrono::milliseconds(100); // Target 10 Hz processing rate
 
     while (vizPointsUtils::running) {
         auto cycleStartTime = std::chrono::steady_clock::now();
@@ -575,7 +575,7 @@ void vizPointsUtils::runOccupancyMapPipeline(const std::vector<int>& allowedCore
         // Extract points and attributes
         std::vector<Eigen::Vector3f> pointCloud(localPoints.val.begin(), localPoints.val.begin() + localPoints.numVal);
 
-        const float distanceThreshold = 5.0f; // 5 meters
+        const float distanceThreshold = 30.0f; // 5 meters
         pointCloud = filterPointsBeyondThreshold(pointCloud, distanceThreshold);
         uint32_t sizePointCloud = pointCloud.size();
         
