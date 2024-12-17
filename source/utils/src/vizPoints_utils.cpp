@@ -557,31 +557,39 @@ void vizPointsUtils::runOccupancyMapPipeline(const std::vector<int>& allowedCore
     while (vizPointsUtils::running) {
         auto cycleStartTime = std::chrono::steady_clock::now();
 
-        CallbackPoints::Points localPoints;
+        
         // Get the current size of the ring buffer (number of items to process in this cycle)
         size_t itemsToProcess = vizPointsUtils::pointsRingBuffer.read_available();
 
-        for (size_t i = 0; i < itemsToProcess; ++i) {
-            if (vizPointsUtils::pointsRingBuffer.pop(localPoints)) {
+        if (itemsToProcess > 1){
+
+            for (size_t i = 0; i < itemsToProcess; ++i) {
+                if (vizPointsUtils::pointsRingBuffer.pop(localPoints)) {
                 // Keep updating localPoints with the current item
+                }
             }
         }
+        
 
-         // Extract points and attributes
+        // Extract points and attributes
         std::vector<Eigen::Vector3f> pointCloud(localPoints.val.begin(), localPoints.val.begin() + localPoints.numVal);
 
-        std::vector<float> intensity(localPoints.numVal);
-        std::vector<float> reflectivity(localPoints.numVal);
-        std::vector<float> NIR(localPoints.numVal);
+        const float distanceThreshold = 5.0f; // 5 meters
+        pointCloud = filterPointsBeyondThreshold(pointCloud, distanceThreshold);
+        uint32_t sizePointCloud = pointCloud.size();
+        
+        std::vector<float> intensity(sizePointCloud);
+        std::vector<float> reflectivity(sizePointCloud);
+        std::vector<float> NIR(sizePointCloud);
 
         OccupancyMapData localOccupancyMapData;
 
         // Parse attributes into separate vectors (this is variant!)
-        std::transform(localPoints.val.begin(), localPoints.val.begin() + localPoints.numVal, intensity.begin(),
+        std::transform(localPoints.val.begin(), localPoints.val.begin() + sizePointCloud, intensity.begin(),
                         [](const Eigen::Vector3f& vec) { return vec.x(); });
-        std::transform(localPoints.val.begin(), localPoints.val.begin() + localPoints.numVal, reflectivity.begin(),
+        std::transform(localPoints.val.begin(), localPoints.val.begin() + sizePointCloud, reflectivity.begin(),
                         [](const Eigen::Vector3f& vec) { return vec.y(); });
-        std::transform(localPoints.val.begin(), localPoints.val.begin() + localPoints.numVal, NIR.begin(),
+        std::transform(localPoints.val.begin(), localPoints.val.begin() + sizePointCloud, NIR.begin(),
                         [](const Eigen::Vector3f& vec) { return vec.z(); });
 
         // Run the occupancy map pipeline
@@ -682,7 +690,10 @@ void vizPointsUtils::runOccupancyMapViewer(const std::vector<int>& allowedCores)
                                                         localOccMapDataBuffer.occupancyColors, 
                                                         mapConfig.resolution);
 
-        auto vehicle_mesh = viewer.CreateVehicleMesh(5.0, localOccMapDataBuffer.orientation.z());
+        //auto vehicle_mesh = viewer.CreateVehicleMesh(5.0, localOccMapDataBuffer.orientation.z());
+        float radius = 1.0f;   // Example radius
+        int segments = 36;     // Number of segments for smoothness
+        auto vehicle_mesh = viewer.CreateVehicleCircleMesh(radius, segments);
 
         // Add geometries to the visualizer
         if (!vis.AddGeometry(static_squares)) {
@@ -700,6 +711,104 @@ void vizPointsUtils::runOccupancyMapViewer(const std::vector<int>& allowedCores)
         try {
             // Setup top-down view
             SetupTopDownView(300.0); // Adjust camera height to a positive value
+        } catch (const std::exception& e) {
+            std::cerr << "Error in rendering: " << e.what() << std::endl;
+            vizPointsUtils::running = false;
+        }
+
+        if (!vis.PollEvents()) {
+            vizPointsUtils::running = false; // Exit if the user closes the window
+            break;
+        }
+
+        // Handle sleep and ensure consistent frame rate
+        auto elapsedTime = std::chrono::steady_clock::now() - cycleStartTime;
+        auto remainingSleepTime = targetCycleDuration - elapsedTime;
+
+        if (remainingSleepTime > std::chrono::milliseconds(0)) {
+            std::this_thread::sleep_for(remainingSleepTime);
+            {
+                std::lock_guard<std::mutex> consoleLock(consoleMutex);
+                std::cout << "[OccupancyMapViewer] Processing Time: " 
+                          << std::chrono::duration_cast<std::chrono::milliseconds>(elapsedTime).count() << " ms\n";
+            }
+        } else {
+            std::lock_guard<std::mutex> consoleLock(consoleMutex);
+            std::cerr << "Warning: [OccupancyMapViewer] Processing took longer than the target cycle duration.\n";
+        }
+    }
+
+    // Cleanly destroy the visualizer window before exiting
+    vis.DestroyVisualizerWindow();
+}
+
+// -----------------------------------------------------------------------------
+// Section: runOccupancyMapViewer
+// -----------------------------------------------------------------------------
+
+void vizPointsUtils::runOccupancyMapViewer2(const std::vector<int>& allowedCores) {
+    // Set thread affinity for optimal core usage
+    setThreadAffinity(allowedCores);
+
+    // Define target cycle duration (200ms = 5Hz)
+    const auto targetCycleDuration = std::chrono::milliseconds(200);
+
+    TopDownViewer viewer;
+
+    // Initialize Open3D visualizer
+    vis.CreateVisualizerWindow("Top-Down View", 2560, 1440);
+
+    // Main loop for rendering and updating the viewer
+    while (vizPointsUtils::running) {
+        auto cycleStartTime = std::chrono::steady_clock::now();
+
+        OccupancyMapData localOccMapDataBuffer;
+        // Get the current size of the ring buffer (number of items to process in this cycle)
+        size_t itemsToProcess = vizPointsUtils::occMapDataRingBuffer.read_available();
+
+        for (size_t i = 0; i < itemsToProcess; ++i) {
+            if (vizPointsUtils::occMapDataRingBuffer.pop(localOccMapDataBuffer)) {
+                // Keep updating localPoints with the current item
+            }
+        }
+
+        // Clear existing geometries
+        try {
+            vis.ClearGeometries();
+        } catch (const std::exception& e) {
+            std::cerr << "Error clearing geometries: " << e.what() << std::endl;
+        }
+
+        // Create voxel squares and the vehicle mesh
+        auto static_cubes = viewer.CreateVoxelCubes(localOccMapDataBuffer.staticVoxels, 
+                                                        localOccMapDataBuffer.position.cast<float>(), 
+                                                        localOccMapDataBuffer.occupancyColors, 
+                                                        mapConfig.resolution);
+
+        //auto vehicle_mesh = viewer.CreateVehicleMesh(5.0, localOccMapDataBuffer.orientation.z());
+        float radius = 1.0f; // Sphere radius
+        int latitude_segments = 20; // Number of latitude lines
+        int longitude_segments = 20; // Number of longitude lines
+        auto sphere_mesh = viewer.CreateVehicleSphereMesh(radius, latitude_segments, longitude_segments);
+
+        // Add geometries to the visualizer
+        if (!vis.AddGeometry(static_cubes)) {
+            std::cerr << "Error: [OccupancyMapViewer] Failed to add static squares.\n";
+            vizPointsUtils::running = false; // Exit if adding fails
+            break;
+        }
+
+        if (!vis.AddGeometry(sphere_mesh)) {
+            std::cerr << "Error: [OccupancyMapViewer] Failed to add vehicle mesh.\n";
+            vizPointsUtils::running = false; // Exit if adding fails
+            break;
+        }
+
+        try {
+            // Setup top-down view
+            double cameraHeight = 100.0;       // Height of the camera above the origin
+            double tiltAngleDegrees = 30.0;   // Tilt angle in degrees
+            SetupTiltedTopDownView(cameraHeight, tiltAngleDegrees);
         } catch (const std::exception& e) {
             std::cerr << "Error in rendering: " << e.what() << std::endl;
             vizPointsUtils::running = false;
@@ -776,5 +885,80 @@ void vizPointsUtils::SetupTopDownView(double cameraHeight) {
     vis.UpdateRender();
 }
 
+// -----------------------------------------------------------------------------
+// Section: SetupTiltedTopDownView
+// -----------------------------------------------------------------------------
 
+void vizPointsUtils::SetupTiltedTopDownView(double cameraHeight, double tiltAngleDegrees) {
+    // Set the background color to black
+    vis.GetRenderOption().background_color_ = Eigen::Vector3d(0.0, 0.0, 0.0);
+
+    auto& view_control = vis.GetViewControl();
+
+    // Retrieve current camera parameters
+    open3d::camera::PinholeCameraParameters camera_params;
+    view_control.ConvertToPinholeCameraParameters(camera_params);
+
+    // Build the extrinsic matrix for NED alignment
+    Eigen::Matrix4d extrinsic = Eigen::Matrix4d::Identity();
+
+    // 1. Set camera position in the NED frame (above origin, at 0, 0, cameraHeight)
+    extrinsic(2, 3) = std::abs(cameraHeight);  // Camera at (0, 0, cameraHeight)
+
+    // 2. Rotate the camera to look downward (-Z) and tilt slightly
+    // First, rotate 180° around the X-axis to point the camera downward
+    Eigen::Matrix3d R_downward = Eigen::AngleAxisd(M_PI, Eigen::Vector3d::UnitX()).toRotationMatrix();
+
+    // Second, apply a slight tilt (tiltAngleDegrees) around the Y-axis
+    double tiltAngleRadians = tiltAngleDegrees * M_PI / 180.0;  // Convert degrees to radians
+    Eigen::Matrix3d R_tilt = Eigen::AngleAxisd(-tiltAngleRadians, Eigen::Vector3d::UnitY()).toRotationMatrix();
+
+    // Combine the rotations: Tilt applied after downward alignment
+    Eigen::Matrix3d R_combined = R_tilt * R_downward;
+
+    // Apply the combined rotation to the extrinsic matrix
+    extrinsic.block<3, 3>(0, 0) = R_combined;
+
+    // Assign the extrinsic matrix to the camera parameters
+    camera_params.extrinsic_ = extrinsic;
+
+    // Apply the updated camera parameters back to the visualizer
+    view_control.ConvertFromPinholeCameraParameters(camera_params);
+
+    // Optional: Add a coordinate frame to the scene
+    auto coord_frame = open3d::geometry::TriangleMesh::CreateCoordinateFrame(1.0, Eigen::Vector3d(0, 0, 0));
+    vis.AddGeometry(coord_frame);
+
+    // Adjust near/far clipping planes for better visibility
+    view_control.SetConstantZNear(0.1);
+    view_control.SetConstantZFar(10000.0);
+
+    // Refresh the visualizer to apply changes
+    vis.PollEvents();
+    vis.UpdateRender();
+}
+
+// -----------------------------------------------------------------------------
+// Section: filterPointsBeyondThreshold
+// -----------------------------------------------------------------------------
+
+std::vector<Eigen::Vector3f> vizPointsUtils::filterPointsBeyondThreshold(const std::vector<Eigen::Vector3f>& inputCloud, float distanceThreshold) {
+    // Use concurrent vector for thread-safe insertion during parallel processing
+    tbb::concurrent_vector<Eigen::Vector3f> filteredCloud;
+
+    // Parallel filtering using TBB
+    tbb::parallel_for(tbb::blocked_range<size_t>(0, inputCloud.size()), 
+        [&](const tbb::blocked_range<size_t>& range) {
+            for (size_t i = range.begin(); i < range.end(); ++i) {
+                float distance = inputCloud[i].norm(); // Compute Euclidean distance
+                if (distance > distanceThreshold) {
+                    filteredCloud.push_back(inputCloud[i]);
+                }
+            }
+        }
+    );
+
+    // Convert concurrent_vector to a standard vector and return
+    return std::vector<Eigen::Vector3f>(filteredCloud.begin(), filteredCloud.end());
+}
 

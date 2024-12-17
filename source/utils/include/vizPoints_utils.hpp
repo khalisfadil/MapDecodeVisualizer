@@ -414,6 +414,48 @@ class vizPointsUtils {
 
         // -----------------------------------------------------------------------------
         /**
+         * @brief Visualizes the occupancy map and vehicle state in real time using Open3D.
+         *
+         * @details
+         * This function runs a real-time visualization loop at a target frequency of 5 Hz (200 ms per cycle). 
+         * It renders the occupancy map and vehicle orientation using Open3D's visualizer. The process includes:
+         *
+         * - **Thread Affinity**:
+         *   - Sets the thread's CPU affinity to optimize performance on specified cores.
+         *
+         * - **Data Synchronization**:
+         *   - Waits for the latest processed occupancy map data using a condition variable.
+         *   - Copies the data from shared buffers (`OMD_readBuffer`) for rendering.
+         *
+         * - **Rendering**:
+         *   - Clears existing geometries in the Open3D visualizer.
+         *   - Creates voxel squares (static objects) and a vehicle mesh for visualization.
+         *   - Adds the created geometries to the visualizer and updates the render.
+         *
+         * - **Error Handling**:
+         *   - Exits the loop and logs an error if adding geometries fails.
+         *   - Terminates gracefully if the user closes the visualizer window.
+         *
+         * - **Timing and Performance**:
+         *   - Maintains a target cycle duration of 200 ms (5 Hz).
+         *   - Logs warnings if rendering exceeds the target cycle time.
+         *
+         * @param allowedCores
+         * A vector of integers specifying the CPU cores to which the viewer thread should be pinned for affinity.
+         *
+         * @note
+         * - The function continuously runs while the static `vizPointsUtils::running` flag is `true`.
+         * - Uses thread-safe mechanisms (`occupancyMapDataMutex` and `occupancyMapDataReadyCV`) for data access.
+         * - Open3D visualizer must be correctly initialized before using this function.
+         *
+         * @warning
+         * - Ensure that the system supports Open3D visualization and required configurations (e.g., display settings).
+         * - If geometries fail to render, the visualization loop will terminate.
+         */
+        void runOccupancyMapViewer2(const std::vector<int>& allowedCores);
+
+        // -----------------------------------------------------------------------------
+        /**
          * @brief Configures the Open3D visualizer to display a top-down view of the scene.
          *
          * @details
@@ -449,6 +491,40 @@ class vizPointsUtils {
          * - Camera settings may overwrite existing visualizer configurations.
          */
         void SetupTopDownView(double cameraHeight);
+        
+        // -----------------------------------------------------------------------------
+        /**
+         * @brief Sets up a tilted top-down camera view for better 3D visualization in the NED frame.
+         * 
+         * This function positions the camera above the origin at a specified height and tilts it 
+         * slightly forward by a given angle. This allows for a top-down perspective while still 
+         * providing visibility of 3D structures such as cube sides or other geometries.
+         * 
+         * @param cameraHeight The height of the camera above the origin (positive value).
+         *                     Controls how far the camera is positioned along the Z-axis in the NED frame.
+         * @param tiltAngleDegrees The tilt angle in degrees. 
+         *                         A small positive value (e.g., 30°) tilts the camera forward 
+         *                         for a slightly angled view, enhancing depth perception.
+         * 
+         * @throws std::invalid_argument If the cameraHeight is non-positive or tiltAngleDegrees is invalid.
+         * 
+         * @note The camera is aligned with the NED coordinate frame:
+         *       - X-axis points North.
+         *       - Y-axis points East.
+         *       - Z-axis points Down.
+         *       The tilt angle adds a slight rotation around the Y-axis for better visibility.
+         * 
+         * @example
+         *     double cameraHeight = 10.0;
+         *     double tiltAngleDegrees = 30.0;
+         *     vizPointsUtils::SetupTiltedTopDownView(cameraHeight, tiltAngleDegrees);
+         * 
+         * @details
+         * - The camera is first aligned to look downward (-Z) using a 180° rotation about the X-axis.
+         * - The tilt angle is applied as a rotation about the Y-axis, tilting the camera slightly forward.
+         * - This view provides a better perspective of the scene, showing both the top and sides of 3D objects.
+         */
+        void SetupTiltedTopDownView(double cameraHeight, double tiltAngleDegrees);
 
         // -----------------------------------------------------------------------------
         /**
@@ -726,8 +802,21 @@ class vizPointsUtils {
         // CallbackPoints callbackAttributesProcessor;
         // CallbackPoints::Points latestAttributes;
         
-         // -----------------------------------------------------------------------------
+        // -----------------------------------------------------------------------------
          
         uint32_t pointListenerFrameIDTracker = 0;
+
+        CallbackPoints::Points localPoints;
+
+        // -----------------------------------------------------------------------------
+        /**
+         * @brief Filters points from a point cloud based on a distance threshold.
+         * 
+         * @param inputCloud The input point cloud as a vector of Eigen::Vector3f.
+         * @param distanceThreshold The minimum distance threshold to retain points.
+         * @return std::vector<Eigen::Vector3f> Filtered point cloud containing only points
+         *         beyond the specified distance.
+         */
+        std::vector<Eigen::Vector3f> filterPointsBeyondThreshold(const std::vector<Eigen::Vector3f>& inputCloud, float distanceThreshold);
 
 };

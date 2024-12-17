@@ -33,6 +33,8 @@
 
 #include <tbb/parallel_reduce.h>
 #include <tbb/blocked_range.h>
+#include <tbb/concurrent_vector.h>
+#include <tbb/parallel_for.h>
 
 // -----------------------------------------------------------------------------
 /**
@@ -70,7 +72,7 @@ public:
         float mapRes);
 
     // -----------------------------------------------------------------------------
-   /**
+    /**
      * @brief Creates a triangular mesh representing a vehicle with a specific size and orientation.
      *
      * The vehicle is represented as a triangular marker in the XY plane, with its orientation defined
@@ -84,4 +86,56 @@ public:
      * @throws std::invalid_argument if `markersize` is non-positive.
      */
     std::shared_ptr<open3d::geometry::TriangleMesh> CreateVehicleMesh(float markersize, double yaw_rad);
+
+    // -----------------------------------------------------------------------------
+    /**
+     * @brief Creates a circle mesh to represent the vehicle.
+     * 
+     * @param radius The radius of the circle.
+     * @param segments The number of segments to approximate the circle.
+     * @return std::shared_ptr<open3d::geometry::TriangleMesh> The circular mesh.
+     */
+    std::shared_ptr<open3d::geometry::TriangleMesh> CreateVehicleCircleMesh(float radius, int segments);
+
+    // -----------------------------------------------------------------------------
+    /**
+     * @brief Generate voxel cubes with colors based on grayscale values.
+     * 
+     * @param points Vector of points in NED frame.
+     * @param vehicle_position Vehicle position in NED frame.
+     * @param grayscale_values Grayscale values corresponding to each point.
+     * @param mapRes Resolution of the map (size of a voxel).
+     * @return std::shared_ptr<open3d::geometry::TriangleMesh> Mesh containing voxel cubes.
+     */
+    std::shared_ptr<open3d::geometry::TriangleMesh> CreateVoxelCubes(const std::vector<Eigen::Vector3f>& points,
+                                                                        const Eigen::Vector3f& vehicle_position,
+                                                                        const std::vector<Eigen::Vector3i>& grayscale_values, // Grayscale values per point
+                                                                        float mapRes
+                                                                        );
+
+    // -----------------------------------------------------------------------------
+    /**
+     * @brief Creates a sphere mesh centered at the origin with a specified radius and smoothness.
+     * 
+     * This function generates a sphere mesh by creating vertices and triangles based on latitude 
+     * and longitude segments. The sphere is colored uniformly, with each vertex assigned a green color.
+     * 
+     * @param radius The radius of the sphere. Must be a positive value.
+     * @param latitude_segments The number of divisions along the vertical axis (latitude lines).
+     *                          Higher values result in a smoother sphere.
+     *                          Must be greater than or equal to 2.
+     * @param longitude_segments The number of divisions around the horizontal axis (longitude lines).
+     *                           Higher values result in a smoother sphere.
+     *                           Must be greater than or equal to 3.
+     * 
+     * @return std::shared_ptr<open3d::geometry::TriangleMesh> 
+     *         A shared pointer to the generated sphere mesh, ready for visualization in Open3D.
+     * 
+     * @throws std::invalid_argument If the radius is non-positive or if latitude/longitude segments are invalid.
+     * 
+     * @note The sphere is created in the NED (North-East-Down) coordinate frame, 
+     *       and its center is placed at (0, 0, 0). Increasing the segment values improves mesh smoothness 
+     *       at the cost of higher vertex and triangle count.
+     */
+    std::shared_ptr<open3d::geometry::TriangleMesh> CreateVehicleSphereMesh(float radius, int latitude_segments, int longitude_segments);
 };
