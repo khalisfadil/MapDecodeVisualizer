@@ -692,7 +692,7 @@ void vizPointsUtils::runOccupancyMapViewer(const std::vector<int>& allowedCores)
                                                         mapConfig.resolution);
 
         //auto vehicle_mesh = viewer.CreateVehicleMesh(5.0, localOccMapDataBuffer.orientation.z());
-        float radius = 5.0f;   // Example radius
+        float radius = 2.0f;   // Example radius
         int segments = 36;     // Number of segments for smoothness
         auto vehicle_mesh = viewer.CreateVehicleCircleMesh(radius, segments);
 
