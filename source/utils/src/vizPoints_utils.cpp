@@ -692,7 +692,7 @@ void vizPointsUtils::runOccupancyMapViewer(const std::vector<int>& allowedCores)
                                                         mapConfig.resolution);
 
         //auto vehicle_mesh = viewer.CreateVehicleMesh(5.0, localOccMapDataBuffer.orientation.z());
-        float radius = 1.0f;   // Example radius
+        float radius = 5.0f;   // Example radius
         int segments = 36;     // Number of segments for smoothness
         auto vehicle_mesh = viewer.CreateVehicleCircleMesh(radius, segments);
 
@@ -711,7 +711,7 @@ void vizPointsUtils::runOccupancyMapViewer(const std::vector<int>& allowedCores)
 
         try {
             // Setup top-down view
-            SetupTopDownView(300.0); // Adjust camera height to a positive value
+            SetupTopDownView(100.0); // Adjust camera height to a positive value
         } catch (const std::exception& e) {
             std::cerr << "Error in rendering: " << e.what() << std::endl;
             vizPointsUtils::running = false;
