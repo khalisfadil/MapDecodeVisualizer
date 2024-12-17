@@ -714,7 +714,7 @@ void vizPointsUtils::runOccupancyMapViewer(const std::vector<int>& allowedCores)
 
         try {
             // Setup top-down view
-            SetupTopDownView(200.0); // Adjust camera height to a positive value
+            SetupTopDownView(50.0); // Adjust camera height to a positive value
         } catch (const std::exception& e) {
             std::cerr << "Error in rendering: " << e.what() << std::endl;
             vizPointsUtils::running = false;
