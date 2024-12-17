@@ -66,9 +66,9 @@ void CallbackPoints::process(const std::vector<uint8_t>& data, Points& points) {
         }
 
         // Validate packet size and process 3D points
-        if (data.size() - 73 == temp_numXYZ * 12 && temp_segm != segmentTracker) {
+        if (data.size() - 73 == temp_numXYZ * 12) {
 
-            segmentTracker = temp_segm;
+            // segmentTracker = temp_segm;
             currSegmIdx_++;
 
             uint32_t temp_offset = temp_segm * 110;
