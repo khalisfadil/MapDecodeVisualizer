@@ -98,11 +98,11 @@ int main() {
             }
         );
 
-        // // Start Processing (2 Hz)
-        // threads.emplace_back([&]() {
-        //     myObject.runOccupancyMapViewer(std::vector<int>{4, 5, 6, 7});
-        //     }
-        // );
+        // Start Processing (2 Hz)
+        threads.emplace_back([&]() {
+            myObject.runOccupancyMapViewer(std::vector<int>{4, 5, 6, 7});
+            }
+        );
 
         // Monitor signal and clean up
         while (vizPointsUtils::running) {
