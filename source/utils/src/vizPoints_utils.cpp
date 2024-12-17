@@ -873,8 +873,8 @@ void vizPointsUtils::SetupTopDownView(double cameraHeight) {
     view_control.ConvertFromPinholeCameraParameters(camera_params);
 
     // Optional: Add a coordinate frame to the scene
-    auto coord_frame = open3d::geometry::TriangleMesh::CreateCoordinateFrame(1.0, Eigen::Vector3d(0, 0, 0));
-    vis.AddGeometry(coord_frame);
+    // auto coord_frame = open3d::geometry::TriangleMesh::CreateCoordinateFrame(1.0, Eigen::Vector3d(0, 0, 0));
+    // vis.AddGeometry(coord_frame);
     
 
     // Adjust near/far clipping planes for better visibility
