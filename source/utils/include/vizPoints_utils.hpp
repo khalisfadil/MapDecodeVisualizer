@@ -819,4 +819,6 @@ class vizPointsUtils {
          */
         std::vector<Eigen::Vector3f> filterPointsBeyondThreshold(const std::vector<Eigen::Vector3f>& inputCloud, float distanceThreshold);
 
+
+        CallbackPoints::Points storedDecodedPoints;
 };

@@ -134,17 +134,18 @@ void vizPointsUtils::startPointsListener(boost::asio::io_context& ioContext,
             // Decode raw bytes into a high-level representation
             callbackPointsProcessor.process(data, decodedPoints);
 
-            {
-                std::lock_guard<std::mutex> pLock(pointsMutex);
-                 std::cout << "[PointsListener] numVal :" << decodedPoints.numVal << std::endl;
-            }
+            
+            if (decodedPoints.frameID != 0){
 
-            if (decodedPoints.frameID != 0 && decodedPoints.frameID != pointListenerFrameIDTracker){
+                storedDecodedPoints = decodedPoints;
 
-                pointListenerFrameIDTracker = decodedPoints.frameID;
+                {
+                    std::lock_guard<std::mutex> pLock(pointsMutex);
+                    std::cout << "[PointsListener] numVal :" << storedDecodedPoints.numVal << std::endl;
+                }
 
                 // Attempt to push decoded points into the ring buffer (non-blocking).
-                if (!vizPointsUtils::pointsRingBuffer.push(decodedPoints)) {
+                if (!vizPointsUtils::pointsRingBuffer.push(storedDecodedPoints)) {
                     // If full, we drop the data and log an error/warning
                     std::lock_guard<std::mutex> consoleLock(consoleMutex);
                     std::cerr << "[PointsListener] Ring buffer full; decoded points dropped!\n";
