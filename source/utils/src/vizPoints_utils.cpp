@@ -663,6 +663,7 @@ void vizPointsUtils::runOccupancyMapViewer(const std::vector<int>& allowedCores)
 
     // Initialize Open3D visualizer
     vis.CreateVisualizerWindow("Top-Down View", 2560, 1440);
+    //vis.CreateVisualizerWindow("Top-Down View", 1920, 1080);
 
     // Main loop for rendering and updating the viewer
     while (vizPointsUtils::running) {
