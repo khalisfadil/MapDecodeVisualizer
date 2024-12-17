@@ -100,7 +100,7 @@ int main() {
 
         // Start Processing (2 Hz)
         threads.emplace_back([&]() {
-            myObject.runOccupancyMapViewer2(std::vector<int>{4, 5, 6, 7});
+            myObject.runOccupancyMapViewer(std::vector<int>{4, 5, 6, 7});
             }
         );
 
